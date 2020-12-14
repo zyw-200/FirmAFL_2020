@@ -1,0 +1,8 @@
+ firmware/DAP-2695_REVA_FIRMWARE_1.11.RC044.ZIP | Bin
+ firmware/DIR-817LW_REVA_FIRMWARE_1.00B05.ZIP   | Bin
+ firmware/DIR-850L_FIRMWARE_1.03.ZIP            | Bin
+ firmware/DSL-3782_A1_EU_1.01_07282016.zip      | Bin
+ qemu_mode/DECAF_qemu_2.10/accel/tcg/cpu-exec.c |  68 ++++++++++++++++++-------
+ qemu_mode/DECAF_qemu_2.10/zyw_config1.h        |   2 +-
+ user_mode/linux-user/main.c                    |   7 ++-
+
