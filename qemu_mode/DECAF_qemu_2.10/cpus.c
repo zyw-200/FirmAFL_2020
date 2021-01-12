@@ -2155,6 +2155,7 @@ void fork_test()
 
 #ifdef SHOW_SYSCALL_TRACE
 extern FILE * sys_trace_fp;
+extern FILE * previous_trace_fp;
 #endif
 
 //extern void cpu_mips_irq_request(void *opaque, int irq, int level);
@@ -2190,11 +2191,18 @@ gotPipeNotification(void *ctx)
         qemu_tcg_init_vcpu(restart_cpu); //zyw
         qemu_account_warp_timer();
 #ifdef SHOW_SYSCALL_TRACE
-        int file_exist = access("syscall_trace_full", F_OK);
+        if(previous_trace_fp)
+        {
+
+            fclose(previous_trace_fp);
+            previous_trace_fp = NULL;
+        }
+        int file_exist = access("syscall_trace_full_after", F_OK);
         if(file_exist != 0)
         {
-            sys_trace_fp = fopen("syscall_trace_full", "a+");    
+            sys_trace_fp = fopen("syscall_trace_full_after", "a+");    
         }
+        
 #endif
 
 #else

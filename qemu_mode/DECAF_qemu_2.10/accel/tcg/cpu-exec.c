@@ -54,6 +54,7 @@ int CP0_UserLocal = 0;
 #include "zyw_config1.h"
 #include "zyw_config2.h"
 
+
 #ifdef SNAPSHOT_SYNC
 char *phys_addr_stored_bitmap; 
 
@@ -142,6 +143,10 @@ int write_addr(uintptr_t ori_addr, uintptr_t addr);
 #endif
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
+
+FILE * previous_trace_fp = NULL;
+FILE * sys_trace_fp = NULL;
+
 
 
 #ifdef TARGET_MIPS
@@ -596,7 +601,7 @@ int feed_input(CPUState * cpu)
         
         if(check_http_header(recv_buf) == 0)
         {
-            //printf("recv_buf:%s\n", recv_buf);
+            printf("recv_buf:%s\n", recv_buf);
             return 2;
         }
         
@@ -913,6 +918,15 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
         DECAF_printf("parent proc:%s\n", par_proc_name);
 
         insert_pgd(params->cp.cr3);
+
+#ifdef SHOW_SYSCALL_TRACE
+        int file_exist = access("syscall_trace_full_before", F_OK);
+        if(file_exist != 0)
+        {
+            previous_trace_fp = fopen("syscall_trace_full_before", "a+");    
+        }
+#endif
+
 
         //pro_start = 1;
         //flush_not_regen_pc();
@@ -2128,8 +2142,6 @@ int specify_fork_pc(CPUState *cpu)
     }           
 }
 
-FILE * sys_trace_fp = NULL;
-
 
 int start_fork(CPUState *cpu, target_ulong pc)
 {
@@ -2748,8 +2760,24 @@ skip_to_pos:
 #ifdef TARGET_MIPS            
             if(afl_user_fork == 0 && pc ==  curr_state_pc + 4 && into_syscall && before_syscall_stack == stack)
             {
+#ifdef TARGET_MIPS
+                    target_ulong a0 = env->active_tc.gpr[4];
+                    target_ulong a1 =env->active_tc.gpr[5];
+                    target_ulong a2 = env->active_tc.gpr[6];
+                    target_ulong a3 = ori_a3;
+                    target_ulong ra = env->active_tc.gpr[31];
                     target_ulong err = env->active_tc.gpr[7];
                     target_ulong ret = env->active_tc.gpr[2];
+#elif defined(TARGET_ARM)
+                    target_ulong a0 = ori_a1;
+                    target_ulong a1 = env->regs[1];
+                    target_ulong a2 = env->regs[2];
+                    target_ulong a3 = env->regs[3];
+                    target_ulong ra = env->regs[14];
+                    target_ulong err = 0; //???
+                    target_ulong ret = env->regs[0]; //???
+
+#endif
                     FILE * fffp = fopen("before_syscall_trace", "a+");
                     fprintf(fffp, "before syscall end:%d, ret:%d, error:%d\n", into_syscall, ret, err);
                     if(into_syscall == 4176)
@@ -2828,6 +2856,15 @@ skip_to_pos:
                     }
                     fclose(fffp);
                     //printf("syscall_end:%d, ret:%x\n", into_syscall, env->active_tc.gpr[2]);
+                    if(previous_trace_fp)
+                    {
+#ifdef TARGET_MIPS
+                        fprintf(previous_trace_fp,"%d;%d;%d;%d;%d;%d\n", into_syscall - 4000, a0, a1, a2 ,a3, ret);
+
+#elif defined(TARGET_ARM)
+                        fprintf(previous_trace_fp,"%d;%d;%d;%d;%d;%d\n", into_syscall, a0, a1, a2 ,a3, ret);
+#endif
+                    }
                     reset_current_state(cpu);
             }
 #endif
@@ -2894,6 +2931,7 @@ skip_to_pos:
 
 
                     }
+
 #endif
                     reset_current_state();
                    
@@ -2987,14 +3025,17 @@ skip_to_pos:
             if(pgd_exist())
             {
                 target_ulong pgd =DECAF_getPGD(cpu);
-                /*
+                
                 if(find_pgd(pgd) && pc < 0x10000000)
                 {
                     FILE * fffp = fopen("before_syscall_trace", "a+");
-                    fprintf(fffp, "pc: %x\n", pc);
+                    #ifdef TARGET_MIPS
+                    //if(pc == 0x408194)//main                 
+                    fprintf(fffp, "pc: %x, s1:%x\n", pc, env->active_tc.gpr[17]);
+                    #endif
                     fclose(fffp);
                 }
-                
+                /*
                 if(target_pgd == pgd && pc < 0x10000000)
                 {
                 	if(sys_trace_fp)
