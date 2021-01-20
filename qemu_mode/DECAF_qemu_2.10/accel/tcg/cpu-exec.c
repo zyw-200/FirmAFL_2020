@@ -916,6 +916,8 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
         int par_cr3;
         VMI_find_process_by_pid_c(par_pid, par_proc_name, 100, &par_cr3);
         DECAF_printf("parent proc:%s\n", par_proc_name);
+        FILE *fp = fopen("program_start", "w+");
+        fclose(fp);
 
         insert_pgd(params->cp.cr3);
 
@@ -1834,8 +1836,10 @@ int cpu_exec_tail(CPUState * cpu)
 
 int after_read = 0;
 int state = 2;
+int count_syscall = 0;
 int determine_if_end(int program_id)
 {
+    count_syscall++;
 #ifdef TARGET_MIPS
     if(into_syscall == 4001 || into_syscall == 4246){  //mips, arm32
         return 1;
@@ -1850,13 +1854,14 @@ int determine_if_end(int program_id)
                 return 1;
             }
         }
-        else if(state == 2)
+        else if(state == 2 && count_syscall<=5)
         {
             state++;
         }
         else
         {
             state = 2;
+            count_syscall = 0;
             if(sys_trace_fp)
                 fprintf(sys_trace_fp,"%d\n", into_syscall - 4000);
         	return 1;
@@ -1865,13 +1870,14 @@ int determine_if_end(int program_id)
     }
     else if(into_syscall == 4188) 
     {
-        if(state == 2)
+        if(state == 2 && count_syscall<=5)
         {
             state++;
         }
         else
         {
             state = 2;
+            count_syscall = 0;
             if(sys_trace_fp)
                 fprintf(sys_trace_fp,"%d\n", into_syscall - 4000);
             return 1;
@@ -3197,6 +3203,7 @@ skip_to_pos:
                     #endif
                     fclose(fffp);
                 }
+                /*
                 #ifdef TARGET_MIPS
                 if(pc < 0x10000000)
                 //if(target_pgd == pgd && pc < 0x10000000)
@@ -3222,7 +3229,7 @@ skip_to_pos:
                     }
                 }
                 #endif
-                
+                */
             }
 #endif           
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
