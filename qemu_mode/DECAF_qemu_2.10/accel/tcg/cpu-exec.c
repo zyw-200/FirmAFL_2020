@@ -701,7 +701,7 @@ int data_length(unsigned long value)
 
 //extern FILE *file_log;
 int mem_mapping_exit = 0;
-
+target_ulong crash_addr = 0;
 static void do_block_begin(DECAF_Callback_Params* param)
 {
 
@@ -714,8 +714,14 @@ static void do_block_begin(DECAF_Callback_Params* param)
     target_ulong ra = 0;
 #endif
 
-
-    if(afl_user_fork && (pc == 0x80133a84 || pc == 0x80133ac4))
+//2.6.39.4 get_signal_to_deliver
+#ifdef TARGET_WORDS_BIGENDIAN
+    crash_addr = 0x80133DFC;
+#else
+    crash_addr = 0x80133ECC;
+#endif
+    if(afl_user_fork && (pc == crash_addr))
+    //if(afl_user_fork && (pc == 0x80133a84 || pc == 0x80133ac4))
     {
         DECAF_printf("print_fatal_signal:%x\n",pc);
         target_ulong pgd = DECAF_getPGD(cpu);
@@ -908,14 +914,16 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
     {
         return;
     }
-    if(strcmp(procname,program_analysis) == 0)
+    char par_proc_name[100];
+    int par_cr3;
+    VMI_find_process_by_pid_c(par_pid, par_proc_name, 100, &par_cr3);
+    DECAF_printf("parent proc:%s\n", par_proc_name);
+
+    if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL && strstr(par_proc_name, "procd") == NULL)
     {
         DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cur pgd:%x\n",procname, index, pid, par_pid, params->cp.cr3);
 
-        char par_proc_name[100];
-        int par_cr3;
-        VMI_find_process_by_pid_c(par_pid, par_proc_name, 100, &par_cr3);
-        DECAF_printf("parent proc:%s\n", par_proc_name);
+        
         FILE *fp = fopen("program_start", "w+");
         fclose(fp);
 
@@ -2007,12 +2015,14 @@ int determine_if_skip(int program_id, CPUState *cpu)
             return 1;//goto skip_to_pos;
         }
     }
+    /*
     else if(a0 == accept_fd && into_syscall == 4140)
     {
         skip_syscall(cpu,0, 0);
         return 1;//goto skip_to_pos;
     }
-
+    */
+      /*
     //tmp_not_exit = 0;
     if(into_syscall == 4002) //fork
     {
@@ -2032,7 +2042,7 @@ int determine_if_skip(int program_id, CPUState *cpu)
         skip_syscall(cpu, 0, 0);
         return 1;//goto skip_to_pos;
     }
-    /*
+  
     else if(into_syscall == 4178) //send
     {
         if(program_id == 10853)
@@ -2055,7 +2065,7 @@ int determine_if_skip(int program_id, CPUState *cpu)
     }
     */
     
-    else if(into_syscall == 4170) //connect
+    if(into_syscall == 4170) //connect
     {
         if(program_id == 10566 || program_id == 9054) 
         {
@@ -2063,12 +2073,14 @@ int determine_if_skip(int program_id, CPUState *cpu)
             return 1;//goto skip_to_pos;
         }             
     }
+    /*
     else if(into_syscall == 4117) 
     {
         skip_syscall(cpu, 0, 0);
         return 1;//goto skip_to_pos;
     
     }
+    */
     return 0;
 
 #elif defined(TARGET_ARM)
@@ -2565,7 +2577,7 @@ void handle_accept_after(CPUState *cpu, target_ulong pc)
 
 target_ulong ori_a1;
 target_ulong ori_a3;
-#define SHOW_SYSCALL
+//#define SHOW_SYSCALL
 
 /* main execution loop */
 int cpu_exec(CPUState *cpu)
@@ -2886,7 +2898,7 @@ skip_to_pos:
 #endif
 */
 
-#ifdef SHOW_SYSCALL
+
 #ifdef TARGET_MIPS            
             if(afl_user_fork == 0 && pc ==  curr_state_pc + 4 && into_syscall && before_syscall_stack == stack)
             {
@@ -2921,7 +2933,7 @@ skip_to_pos:
                         }
 
                     }
-    
+#ifdef SHOW_SYSCALL
                     FILE * fffp = fopen("before_syscall_trace", "a+");
                     fprintf(fffp, "before syscall end:%d, ret:%d, error:%d\n", into_syscall, ret, err);
                     if(into_syscall == 4176)
@@ -2999,6 +3011,7 @@ skip_to_pos:
                        
                     }
                     fclose(fffp);
+#endif
                     //printf("syscall_end:%d, ret:%x\n", into_syscall, env->active_tc.gpr[2]);
                     if(previous_trace_fp)
                     {
@@ -3018,7 +3031,7 @@ skip_to_pos:
                     }
                     reset_current_state(cpu);
             }
-#endif
+
 #endif
 
 #ifdef TARGET_MIPS            
@@ -3193,7 +3206,7 @@ skip_to_pos:
             if(pgd_exist())
             {
                 target_ulong pgd =DECAF_getPGD(cpu);
-                
+                /*
                 if(find_pgd(pgd) && pc < 0x10000000)
                 {
                     FILE * fffp = fopen("before_syscall_trace", "a+");
@@ -3203,33 +3216,18 @@ skip_to_pos:
                     #endif
                     fclose(fffp);
                 }
-                /*
+                */
                 #ifdef TARGET_MIPS
                 if(pc < 0x10000000)
                 //if(target_pgd == pgd && pc < 0x10000000)
                 {
-                	if(previous_trace_fp)
+                	if(sys_trace_fp)
                     {
-                        //fprintf(previous_trace_fp,"pc: %x, s5:%x\n", pc, env->active_tc.gpr[21]);
-                        if(pc == 0x4023c0)
-                        {
-                            char cmdstr[256];
-                            target_ulong ptr;
-                            DECAF_read_ptr(cpu, env->active_tc.gpr[5]+4, &ptr);
-                            DECAF_read_mem(cpu, ptr, 256, cmdstr);
-                            fprintf(previous_trace_fp,"cmd is %s\n", cmdstr);
-                            DECAF_read_ptr(cpu, env->active_tc.gpr[5] + 8, &ptr);
-                            if(ptr!=0)
-                            {
-                                DECAF_read_mem(cpu, ptr, 256, cmdstr);
-                             fprintf(previous_trace_fp,"cmd is %s\n", cmdstr);
-                            }
-                            
-                        }
+                        fprintf(sys_trace_fp,"pc: %x, s5:%x\n", pc, env->active_tc.gpr[21]);
                     }
                 }
                 #endif
-                */
+                
             }
 #endif           
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
