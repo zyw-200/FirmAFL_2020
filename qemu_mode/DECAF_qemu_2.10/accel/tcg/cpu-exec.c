@@ -723,7 +723,7 @@ static void do_block_begin(DECAF_Callback_Params* param)
     if(afl_user_fork && (pc == crash_addr))
     //if(afl_user_fork && (pc == 0x80133a84 || pc == 0x80133ac4))
     {
-        DECAF_printf("print_fatal_signal:%x\n",pc);
+        //DECAF_printf("print_fatal_signal:%x\n",pc);
         target_ulong pgd = DECAF_getPGD(cpu);
         if(pgd == target_pgd)
         {
@@ -917,15 +917,15 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
     char par_proc_name[100];
     int par_cr3;
     VMI_find_process_by_pid_c(par_pid, par_proc_name, 100, &par_cr3);
-    DECAF_printf("parent proc:%s\n", par_proc_name);
+    //DECAF_printf("parent proc:%s\n", par_proc_name);
 
     if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL && strstr(par_proc_name, "procd") == NULL)
     {
-        DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cur pgd:%x\n",procname, index, pid, par_pid, params->cp.cr3);
+        //DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cur pgd:%x\n",procname, index, pid, par_pid, params->cp.cr3);
 
         
-        FILE *fp = fopen("program_start", "w+");
-        fclose(fp);
+        //FILE *fp = fopen("program_start", "w+");
+        //fclose(fp);
 
         insert_pgd(params->cp.cr3);
 
@@ -963,7 +963,7 @@ static void callbacktests_removeproc_callback(VMI_Callback_Params* params)
     }
     if(strcmp(procname,program_analysis) == 0)
     {
-        DECAF_printf("\nProcname end:%s/%d,pid:%d, cur pgd:%x\n",procname, index, pid, params->rp.cr3);
+        //DECAF_printf("\nProcname end:%s/%d,pid:%d, cur pgd:%x\n",procname, index, pid, params->rp.cr3);
         delete_pgd(params->rp.cr3);
 
     }
@@ -1862,10 +1862,16 @@ int determine_if_end(int program_id)
                 return 1;
             }
         }
+        /*
         else if(state == 2 && count_syscall<=5)
         {
             state++;
         }
+        */
+        else if(state == 2 && ( program_id == 12979 || program_id == 13112 || program_id == 18627))
+        {
+            state++;
+        }   
         else
         {
             state = 2;
@@ -1878,11 +1884,18 @@ int determine_if_end(int program_id)
     }
     else if(into_syscall == 4188) 
     {
+        /*
         if(state == 2 && count_syscall<=5)
         {
             state++;
         }
+        */
+        if(state == 2 && (program_id == 106030 || program_id == 106036 || program_id == 106037 || program_id == 19545 || program_id == 20023))
+        {
+            state++;
+        }
         else
+
         {
             state = 2;
             count_syscall = 0;
@@ -3191,16 +3204,17 @@ skip_to_pos:
 #endif
 
             if(afl_user_fork) last_pc = pc;
-
+            /*
             if(afl_user_fork && pc == 0x80133a84)
             {
-                DECAF_printf("print_fatal_signal:%x\n",pc);
+                //DECAF_printf("print_fatal_signal:%x\n",pc);
 #ifdef FORK_OR_NOT
                 int ret_value = 32;
                 doneWork(ret_value);
                 //goto end;
 #endif
             }
+            */
 
 #ifdef SHOW_SYSCALL             
             if(pgd_exist())
