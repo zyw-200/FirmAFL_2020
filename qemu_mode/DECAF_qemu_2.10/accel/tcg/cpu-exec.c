@@ -486,6 +486,19 @@ int check_input(char * input, int len) // if all are readable charater before =
 
 int check_http_header(char * input) // if all are readable charater before =
 {   
+    if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+/*
+int check_http_header(char * input) // if all are readable charater before =
+{   
     if(program_id == 9925)
     {
         if(strncmp(input, "GET /session_login.php HTTP/1.1", 31) == 0)
@@ -524,6 +537,7 @@ int check_http_header(char * input) // if all are readable charater before =
 
     return 1;
 }
+*/
 
 int feed_input(CPUState * cpu)
 {
