@@ -2119,6 +2119,7 @@ static void qemu_dummy_start_vcpu(CPUState *cpu)
 }
 
 
+
 void restart()
 {
         
@@ -2130,7 +2131,6 @@ void restart()
         first_cpu->exception_index = -1; 
         qemu_cond_broadcast(first_cpu->halt_cond);
 }
-
 
 void fork_test()
 {
@@ -2239,7 +2239,9 @@ gotPipeNotification(void *ctx)
 
 void qemu_init_vcpu(CPUState *cpu)
 {
+#if defined(FUZZ) || defined(MEM_MAPPING) 
     FirmAFL_config();
+#endif
 #ifdef MEM_MAPPING
     int res = open_read_pipe();
     if(res != -1){

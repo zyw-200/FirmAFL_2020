@@ -109,6 +109,80 @@ void getconfig(char *keywords, char *res)
     fclose(fp); 
 }
 
+int config_pc = 0;
+char program_analysis[256];
+char feed_type[256];
+int environ_offset = 0;
+char lib_name[256];
+int program_type = 0;
+
+int FirmAFL_config()
+{
+    memset(feed_type, 0, 256);
+    getconfig("feed_type",feed_type);
+    assert(strlen(feed_type)>0);
+
+    char fork_pc_str[256];
+    memset(fork_pc_str, 0, 256);
+    getconfig("start_fork_pc", fork_pc_str);
+    if(strlen(fork_pc_str) > 0)
+    {   
+        config_pc = strtol(fork_pc_str, NULL, 16);
+        assert(config_pc!=0);
+    }
+#ifdef FUZZ  
+    if(strcmp(feed_type, "FEED_ENV") == 0)
+    {
+        getconfig("lib_name", lib_name);
+        char offset_str[256];
+        getconfig("environ_offset", offset_str);
+        environ_offset = strtol(offset_str, NULL, 16);
+        assert(strlen(lib_name) > 0);
+        assert(environ_offset!=0);
+    }
+    char end_pc_str[256];
+    memset(end_pc_str, 256, 0);
+    getconfig("end_pc", end_pc_str);
+    if(strlen(end_pc_str) > 0)
+    {
+        end_pc = strtol(end_pc_str, NULL, 16);
+    }
+#endif
+    char id_str[256];
+    memset(id_str, 256, 0);
+    getconfig("id", id_str);
+    if(strlen(id_str) > 0)
+    {
+        program_id = strtol(id_str, NULL, 10);
+    }
+    
+    if(program_id == 105600)
+    {
+        fork_accept_times = 3;
+    }
+    if(program_id == 161161)
+    {
+        fork_accept_times = 1;
+    }
+    if(program_id == 11143)
+    {
+        fork_accept_times = 2;
+    }
+    getconfig("program_analysis", program_analysis); 
+    assert(strlen(program_analysis)>0);
+    /*
+    if(strcmp(program_analysis, "httpd") == 0 || strcmp(program_analysis, "miniupnpd") == 0)
+    {
+        program_type = 1;
+    }
+    */
+    /*
+    else if(strcmp(program_analysis, "network.cgi") == 0 || strcmp(program_analysis, "video.cgi") == 0)
+    {
+        program_type = 1;
+    }
+    */
+}
 
 #endif
 
@@ -197,88 +271,7 @@ struct ARMMMUFaultInfo {
 };
 #endif
 
-int total_count = 10000;
-int count = 0;
-int tmptmptmp = 0;
-int brk_end = 0;
-FILE * open_log_file = NULL;
 
-
-int config_pc = 0;
-char program_analysis[256];
-char feed_type[256];
-int environ_offset = 0;
-char lib_name[256];
-int program_type = 0;
-
-
-int FirmAFL_config()
-{
-    memset(feed_type, 0, 256);
-    getconfig("feed_type",feed_type);
-    assert(strlen(feed_type)>0);
-
-    char fork_pc_str[256];
-    memset(fork_pc_str, 0, 256);
-    getconfig("start_fork_pc", fork_pc_str);
-    if(strlen(fork_pc_str) > 0)
-    {   
-        config_pc = strtol(fork_pc_str, NULL, 16);
-        assert(config_pc!=0);
-    }
-#ifdef FUZZ  
-    if(strcmp(feed_type, "FEED_ENV") == 0)
-    {
-        getconfig("lib_name", lib_name);
-        char offset_str[256];
-        getconfig("environ_offset", offset_str);
-        environ_offset = strtol(offset_str, NULL, 16);
-        assert(strlen(lib_name) > 0);
-        assert(environ_offset!=0);
-    }
-    char end_pc_str[256];
-    memset(end_pc_str, 256, 0);
-    getconfig("end_pc", end_pc_str);
-    if(strlen(end_pc_str) > 0)
-    {
-        end_pc = strtol(end_pc_str, NULL, 16);
-    }
-#endif
-    char id_str[256];
-    memset(id_str, 256, 0);
-    getconfig("id", id_str);
-    if(strlen(id_str) > 0)
-    {
-        program_id = strtol(id_str, NULL, 10);
-    }
-    
-    if(program_id == 105600)
-    {
-        fork_accept_times = 3;
-    }
-    if(program_id == 161161)
-    {
-        fork_accept_times = 1;
-    }
-    if(program_id == 11143)
-    {
-        fork_accept_times = 2;
-    }
-    getconfig("program_analysis", program_analysis); 
-    assert(strlen(program_analysis)>0);
-    /*
-    if(strcmp(program_analysis, "httpd") == 0 || strcmp(program_analysis, "miniupnpd") == 0)
-    {
-        program_type = 1;
-    }
-    */
-    /*
-    else if(strcmp(program_analysis, "network.cgi") == 0 || strcmp(program_analysis, "video.cgi") == 0)
-    {
-        program_type = 1;
-    }
-    */
-}
 
 
 #ifdef FUZZ
@@ -932,7 +925,7 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
     int par_cr3;
     VMI_find_process_by_pid_c(par_pid, par_proc_name, 100, &par_cr3);
     //DECAF_printf("parent proc:%s\n", par_proc_name);
-
+#if defined(FUZZ) || defined(MEM_MAPPING)
     if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL && strstr(par_proc_name, "procd") == NULL)
     {
         //DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cur pgd:%x\n",procname, index, pid, par_pid, params->cp.cr3);
@@ -953,10 +946,9 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
 
 
         //pro_start = 1;
-        //flush_not_regen_pc();
-       
+        //flush_not_regen_pc();    
     }
-  
+#endif 
 }
 
 static void callbacktests_removeproc_callback(VMI_Callback_Params* params)
@@ -975,12 +967,14 @@ static void callbacktests_removeproc_callback(VMI_Callback_Params* params)
     {
         return;
     }
+#if defined(FUZZ) || defined(MEM_MAPPING)
     if(strcmp(procname,program_analysis) == 0)
     {
         //DECAF_printf("\nProcname end:%s/%d,pid:%d, cur pgd:%x\n",procname, index, pid, params->rp.cr3);
         delete_pgd(params->rp.cr3);
 
     }
+#endif
 }
 
 int callbacktests_init(void)
@@ -1856,6 +1850,7 @@ int cpu_exec_tail(CPUState * cpu)
     //rcu_read_unlock();
 }
 
+
 int after_read = 0;
 int state = 2;
 int count_syscall = 0;
@@ -1982,7 +1977,7 @@ int determine_if_end(int program_id)
 #endif
 }
 
-
+#if defined(FUZZ) || defined(MEM_MAPPING)
 int record_current_state(CPUState *cpu)
 {
     CPUArchState *env = cpu->env_ptr;
@@ -2004,9 +1999,7 @@ int reset_current_state()
     before_syscall_stack = 0;
     curr_state_pc = 0;
     into_syscall = 0;
-    //printf("out of syscall:%d,%lx,%lx\n", into_syscall, curr_state_pc, before_syscall_stack);
 }
-
 
 int determine_if_skip(int program_id, CPUState *cpu)
 {
@@ -2114,51 +2107,9 @@ int determine_if_skip(int program_id, CPUState *cpu)
     return 0;
 #endif
 }
-
-/*
-int determine_if_network_recv(int program_id, CPUState *cpu)
-{
+#endif //#if defined(FUZZ) || defined(MEM_MAPPING)
 
 #ifdef AUTO_FIND_FORK_PC
-    CPUArchState *env = cpu->env_ptr;
-#ifdef TARGET_ARM
-    int exception_num = 2;
-    target_ulong sys_call_num = env->regs[7];
-    int arg_0 = env->regs[0];
-    int read_syscall = 3;
-    int recv_syscall = 291;
-    int recvfrom_syscall = 292;
-#elif defined(TARGET_MIPS)
-    int exception_num = 17;
-    target_ulong sys_call_num = env->active_tc.gpr[2];
-    int arg_0 = env->active_tc.gpr[4];
-    int read_syscall = 4003;
-    int recv_syscall = 4175;
-    int recvfrom_syscall = 4176;
-#endif
-
-    if(target_pgd != 0 && start_fork_pc == 0 && cpu->exception_index == exception_num)
-    {
-        if (sys_call_num == read_syscall || sys_call_num == recv_syscall || sys_call_num == recvfrom_syscall)
-        {
-            if(accept_fd == arg_0 && accept_fd!=0) 
-            {
-                target_ulong pgd = DECAF_getPGD(cpu);
-                if(pgd == target_pgd)                        
-                {
-                    DECAF_printf("determine_if_network_recv:%d,%d\n",arg_0, accept_fd);
-                    handle_recv = 1;
-                    return 1;//goto skip_to_pos;
-
-                }
-            }
-        }
-    }
-#endif //AUTO_FIND_FORK_PC
-    return 0;
-}
-*/
-
 int determine_if_network_recv(int program_id, CPUState *cpu, target_ulong sys_call_num)
 {
 
@@ -2256,7 +2207,7 @@ int specify_fork_pc(CPUState *cpu)
         } 
     }           
 }
-
+#endif 
 
 int start_fork(CPUState *cpu, target_ulong pc)
 {
@@ -2364,6 +2315,7 @@ int start_fork(CPUState *cpu, target_ulong pc)
             printf("accept fd:%d\n", accept_fd);
             fprintf(fp, "%d\n", accept_fd);
             fprintf(fp, "%x\n", CP0_UserLocal);
+            fprintf(fp, "%d\n", into_syscall); //2021
             fclose(fp);
 #endif  //MEM_MAPPING
 
@@ -2388,6 +2340,7 @@ int start_fork(CPUState *cpu, target_ulong pc)
     return 0;
 
 }
+
 
 #ifdef FUZZ
 int feed_input_helper(CPUState *cpu, target_ulong pc)
@@ -2421,79 +2374,6 @@ int feed_input_helper(CPUState *cpu, target_ulong pc)
     return 0;
 }
 
-/*
-int feed_input_times = 0;
-int feed_input_to_program(int program_id, CPUState *cpu) //before recv
-{
-
-    CPUArchState *env = cpu->env_ptr;
-#ifdef TARGET_MIPS
-    int a0 = env->active_tc.gpr[4];
-    int a1 = env->active_tc.gpr[5]; 
-    int a2 = env->active_tc.gpr[6];
-    int a3 = env->active_tc.gpr[7];
-#elif defined(TARGET_ARM)
-    target_ulong a0 = env->regs[0];
-    target_ulong a1 =env->regs[1];
-    target_ulong a2 = env->regs[2];
-    target_ulong a3 = env->regs[3];
-#endif
-
-
-#ifdef TARGET_MIPS
-    if(a0 == accept_fd && (into_syscall == 4175 || into_syscall == 4003 || into_syscall == 4176)
-     && strcmp(feed_type,"FEED_HTTP") == 0 && feed_input_times == 0) //161161
-#elif defined(TARGET_ARM)
-    if(a0 == accept_fd && (into_syscall == 3 || into_syscall == 291 || into_syscall == 292)
-     && strcmp(feed_type,"FEED_HTTP") == 0 && feed_input_times == 0) 
-#endif
-    {
-#ifdef TARGET_MIPS
-        get_page_addr_code(env, a1); //important
-#endif
-        int final_recv_len = 0;
-        //161161
-        if(program_id == 161161)
-        {
-            feed_input_times++;
-        }
-
-        int flag = a3;
-        int len = a2;
-        int rest_len = total_len - buf_read_index;
-        //printf("hook flag:%x, %x\n", MSG_PEEK, flag);
-        //printf("rest len:%d\n", rest_len);
-        if(rest_len > len)
-        {
-            final_recv_len = len;
-        }
-        else
-        {
-            final_recv_len  = rest_len;
-        }
-
-        int tmp_addr = write_package(cpu, a1, recv_buf + buf_read_index, final_recv_len);
-        DECAF_write_mem(cpu, tmp_addr, 1, "\0"); //important
-    
-#ifdef TARGET_MIPS
-        if(MSG_PEEK == flag && (into_syscall == 4175 || into_syscall == 4176))
-#elif defined(TARGET_ARM)
-        if(MSG_PEEK == flag && (into_syscall == 291 || into_syscall == 292))
-#endif   
-        {
-            //printf("recv msg_peek\n");
-        }
-        else
-        {
-            //printf("feed input:%s\n", recv_buf + buf_read_index);
-            buf_read_index+=final_recv_len;   
-        }
-        skip_syscall(cpu, final_recv_len, 0);
-        return 1;//goto skip_to_pos;
-    }
-    return 0;
-}
-*/
 
 int feed_input_times = 0;
 int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_num) //after recv
@@ -2569,6 +2449,8 @@ int feed_input_to_program(int program_id, CPUState *cpu, target_ulong sys_call_n
 
 #endif
 
+#ifdef AUTO_FIND_FORK_PC
+
 void handle_accept_after(CPUState *cpu, target_ulong pc)
 {
     CPUArchState *env = cpu->env_ptr;
@@ -2601,6 +2483,7 @@ void handle_accept_after(CPUState *cpu, target_ulong pc)
 
     }
 }
+#endif
 
 target_ulong ori_a1;
 target_ulong ori_a3;
@@ -2669,13 +2552,7 @@ int cpu_exec(CPUState *cpu)
     }
 
     CPUArchState * env = cpu->env_ptr;
-/*
-    int if_recv = determine_if_network_recv(program_id, cpu); // if recv accept_fd
-    if(if_recv)
-    {
-        goto skip_to_pos;
-    }
-*/
+
 #ifdef LMBENCH
     if(cpu->exception_index == 17 && target_pgd!= 0)
     {
@@ -2691,6 +2568,7 @@ int cpu_exec(CPUState *cpu)
     }
 #endif
 
+#if defined(FUZZ) || defined(MEM_MAPPING)
 
     //if(afl_user_fork == 0 && cpu->exception_index == exception_num && into_syscall == 0)
     if(afl_user_fork == 0 && cpu->exception_index == exception_num ) // syscall exit;
@@ -2718,7 +2596,6 @@ int cpu_exec(CPUState *cpu)
 
         }
     }
-
     if(afl_user_fork && cpu->exception_index == exception_num && into_syscall == 0)
     {
 
@@ -2810,8 +2687,8 @@ exit:
 #ifdef DECAF
         }
 #endif
-
     } 
+#endif //#if defined(FUZZ) || defined(MEM_MAPPING)
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
@@ -2904,29 +2781,8 @@ skip_to_pos:
 #ifdef AUTO_FIND_FORK_PC
             handle_accept_after(cpu, pc); //record accept_fd
 #endif
-/*
-            specify_fork_pc(cpu); // specify start_fork_pc after recv or specified point
 
-            int start_fork_res = start_fork(cpu, pc);
-            if(start_fork_res)
-            {
-                goto end;
-            }
-
-#ifdef FUZZ
-            
-            int feed_res = feed_input_helper(cpu, pc);
-            if(feed_res)
-            {
-                //input not appropiate, goto end
-                goto end;
-            }
-            
-#endif
-*/
-
-
-#ifdef TARGET_MIPS            
+#if defined(FUZZ) || defined(MEM_MAPPING)
             if(afl_user_fork == 0 && pc ==  curr_state_pc + 4 && into_syscall && before_syscall_stack == stack)
             {
 #ifdef TARGET_MIPS
@@ -2948,6 +2804,7 @@ skip_to_pos:
 
 #endif
 
+#ifdef AUTO_FIND_FORK_PC
                     int if_recv = determine_if_network_recv(program_id, cpu, into_syscall); // if recv accept_fd
                     if(if_recv)
                     {
@@ -2960,84 +2817,12 @@ skip_to_pos:
                         }
 
                     }
-#ifdef SHOW_SYSCALL
-                    FILE * fffp = fopen("before_syscall_trace", "a+");
-                    fprintf(fffp, "before syscall end:%d, ret:%d, error:%d\n", into_syscall, ret, err);
-                    if(into_syscall == 4176)
+#else
+                    int start_fork_res = start_fork(cpu, pc);
+                    if(start_fork_res)
                     {
-                        char buf[100];
-                        memset(buf,0,100);
-                        DECAF_read_mem(cpu, env->active_tc.gpr[5], 100, buf);
-                        fprintf(fffp, "recvfrom content:%s\n",buf);
-                        sleep(1);
+                        goto end;
                     }
-                    if(into_syscall == 4003)
-                    {
-                        char buf[100];
-                        memset(buf,0,100);
-                        DECAF_read_mem(cpu, env->active_tc.gpr[5], 100, buf);
-                        fprintf(fffp, "read content:%s\n",buf);
-                    }
-                    if(into_syscall == 4005)
-                    {
-                        char buf[100];
-                        memset(buf,0,100);
-                        DECAF_read_mem(cpu, env->active_tc.gpr[4], 100, buf);
-                        printf( "#############open:%s ret:%d\n",buf, ret);
-                    }
-                    if(into_syscall == 4153)
-                    {
-
-                        target_ulong a0 = env->active_tc.gpr[4];
-                        target_ulong name_addr, name[4], name_len, oldp_addr, newp_addr;
-                        char oldp[100];
-                        DECAF_read_ptr(cpu, a0, &name_addr);
-                        printf("name_addr:%x\n", name_addr);
-                        DECAF_read_ptr(cpu, a0 + 4, &name_len);
-                        printf("name len:%d\n", name_len);
-                        DECAF_read_ptr(cpu, name_addr, &name[0]);
-                        DECAF_read_ptr(cpu, name_addr + 4, &name[1]);
-                        DECAF_read_ptr(cpu, name_addr + 8, &name[2]);
-                        DECAF_read_ptr(cpu, name_addr + 12, &name[3]);
-                        DECAF_read_ptr(cpu, a0 + 8, &oldp_addr);
-                        DECAF_read_mem(cpu, oldp_addr, 100, oldp);
-                        printf("name:%d,%d,%d,%d, oldp_addr:%x\n", name[0], name[1], name[2], name[3], oldp_addr);
-                        printf("oldp %s @@@@@@@@@@@@@@@@@\n", oldp);
-    
-                    }
-                    if(into_syscall == 4180 || into_syscall == 4177)
-                    {
-                        char buf[100];
-                        memset(buf, 0, 100);
-                        DECAF_read_mem(cpu, env->active_tc.gpr[5], 100, buf);
-                        fprintf(fffp, "send/ recvfrom:%s\n",buf);
-                        for(int i = 0; i < ret; i++)
-                        {
-                            fprintf(fffp, "%c", buf[i]);
-                        }
-                    }
-                    if(into_syscall == 4054)
-                    {
-                        fprintf(fffp, "ioctl request:%x, %x\n", env->active_tc.gpr[5], env->active_tc.gpr[6]);
-                        
-                        if(env->active_tc.gpr[5] == 0x8910) //SIOCGIFNAME
-                        {
-                            char buf[16];
-                            int ifr_ifindex;
-                            memset(buf, 0, 16);
-                            //uint32_t ifreq_addr;
-                            //DECAF_read_ptr(cpu, env->active_tc.gpr[6], ifreq_addr);
-                            //fprintf(fffp, "ifreq addr:%x\n",ifreq_addr);
-                            DECAF_read_mem(cpu, env->active_tc.gpr[6], 16, buf);
-                            fprintf(fffp, "ret:%s\n", buf);
-                            DECAF_read_ptr(cpu, env->active_tc.gpr[6] + 16, &ifr_ifindex);
-                            fprintf(fffp, "index:%d\n", ifr_ifindex);
-
-                        }      
-                    
-                       
-                    }
-                    fclose(fffp);
 #endif
                     //printf("syscall_end:%d, ret:%x\n", into_syscall, env->active_tc.gpr[2]);
                     if(previous_trace_fp)
@@ -3058,8 +2843,6 @@ skip_to_pos:
                     }
                     reset_current_state(cpu);
             }
-
-#endif
 
 #ifdef TARGET_MIPS            
             if(afl_user_fork && pc ==  curr_state_pc + 4 && into_syscall && before_syscall_stack == stack)
@@ -3161,6 +2944,7 @@ skip_to_pos:
                 }
 #endif
             }
+#endif //#if defined(FUZZ) || defined(MEM_MAPPING)
 
 
 #ifdef LMBENCH
@@ -3246,18 +3030,27 @@ skip_to_pos:
                 }
                 */
                 #ifdef TARGET_MIPS
-                if(pc < 0x10000000)
-                //if(target_pgd == pgd && pc < 0x10000000)
+                //if(pc < 0x10000000)
+                if(target_pgd == pgd && pc < 0x10000000)
                 {
-                	if(sys_trace_fp)
+                	//if(sys_trace_fp)
+                    //{
+                        //fprintf(sys_trace_fp,"pc: %x, s5:%x\n", pc, env->active_tc.gpr[21]);
+                    //}
+                    printf("pc:%x, s0:%x, v0:%x, v1:%x,a0:%x, a1:%x\n", pc, env->active_tc.gpr[16], env->active_tc.gpr[2], env->active_tc.gpr[3], env->active_tc.gpr[4], env->active_tc.gpr[5]);
+                    if(pc == 0x404f6c)
                     {
-                        fprintf(sys_trace_fp,"pc: %x, s5:%x\n", pc, env->active_tc.gpr[21]);
+                        char cmd_str[52];
+                        DECAF_read_mem(cpu, env->active_tc.gpr[20], 52, cmd_str);
+                        printf("s4:%x, cmd:%s\n",env->active_tc.gpr[20],  cmd_str);
+                        sleep(10);
+                      
                     }
                 }
                 #endif
                 
             }
-#endif           
+#endif  
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
 
@@ -4054,13 +3847,17 @@ void handlePiperead(void *ctx)
         restart();
     }
     else if(res == 1){
-#ifdef TARGET_MIPS
-        printf("handle_addr:%x,%d, state:%x\n", handle_addr, handle_addr_prot, env->active_tc.PC);
-#elif defined(TARGET_ARM)
-        printf("handle_addr:%x,%d, state:%x\n", handle_addr, handle_addr_prot, env->regs[15]);
-#endif        
-        restart();
 
+        if(print_debug)
+        {
+#ifdef TARGET_MIPS
+            printf("handle_addr:%x,%d, state:%x\n", handle_addr, handle_addr_prot, env->active_tc.PC);
+#elif defined(TARGET_ARM)
+            printf("handle_addr:%x,%d, state:%x\n", handle_addr, handle_addr_prot, env->regs[15]);
+#endif
+        }
+        reset_current_state(); // add
+        restart();
     }
 
 }
