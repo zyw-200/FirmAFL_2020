@@ -62,6 +62,7 @@ int program_id = 0;
 int first_syscall = 0;
 int accept_fd = 0;
 int CP0_UserLocal = 0;
+int recv_syscall = 0;
 
 char * mem_file = "mem_file";
 int parent_pid = 0;
@@ -569,11 +570,13 @@ void get_input(CPUState * cpu)
         return;
         */
         total_len = getWork(recv_buf, 4096);
+        /*
         if(check_http_header(recv_buf) == 0)
         {
             //printf("recv_buf:%s\n", recv_buf);
             normal_exit(0);
         }
+        */
     }
     else if (strcmp(feed_type, "FEED_CMD") == 0)
     {
@@ -598,7 +601,7 @@ void get_input(CPUState * cpu)
     }
 }
 
-
+/*
 abi_long feed_input(int syscall_num, CPUArchState *env, int *network_handle)
 {
     abi_long ret = -1;
@@ -665,12 +668,6 @@ abi_long feed_input(int syscall_num, CPUArchState *env, int *network_handle)
         {
             ret = a2; //len
         }
-        /*
-        else if((env->active_tc.gpr[4]== accept_fd) && syscall_num == 55)
-        {
-            ret = env->active_tc.gpr[5];
-        }
-        */
         else if((a0 == accept_fd) && syscall_num == 4)
         {
             if(program_id == 161161)
@@ -694,7 +691,73 @@ abi_long feed_input(int syscall_num, CPUArchState *env, int *network_handle)
     }
     return ret;
 }           
+*/
 
+void feed_input(CPUState * cpu)
+{
+    CPUArchState *env = cpu->env_ptr;
+    abi_long ret = -1;
+    if(strcmp(feed_type,"FEED_HTTP") == 0)
+    {
+#ifdef TARGET_MIPS
+        target_ulong pc = env->active_tc.PC;
+        target_ulong a0 = env->active_tc.gpr[4];
+        target_ulong a1 =env->active_tc.gpr[5];
+        target_ulong a2 = env->active_tc.gpr[6];
+        target_ulong a3 = env->active_tc.gpr[7];
+        target_ulong ra = env->active_tc.gpr[31];
+
+#elif defined(TARGET_ARM)
+        target_ulong pc = env->regs[15];
+        target_ulong a0 = env->regs[0];
+        target_ulong a1 = env->regs[1];
+        target_ulong a2 = env->regs[2];
+        target_ulong a3 = env->regs[3];
+        target_ulong ra = env->regs[14];
+#endif
+        if((recv_syscall == 175  || recv_syscall == 3 || recv_syscall == 176) && (a0 == accept_fd) && feed_input_times == 0)
+        {
+            if(program_id == 161161)
+            {
+                feed_input_times++;
+            }
+
+            int flag = a3;
+            int len = a2;
+            char *buf = g2h(a1);
+
+            //printf("recv :%d,%d,%d, %s\n", accept_fd, len,buf_read_index, recv_buf);
+            int rest_len = total_len - buf_read_index;
+            //printf("hook flag:%x, %x\n", MSG_PEEK, flag);
+            if(rest_len > len)
+            {
+                ret = len;
+                memcpy(buf, recv_buf + buf_read_index, ret);
+            }
+            else
+            {
+                ret  = rest_len;
+                memcpy(buf, recv_buf + buf_read_index, ret);
+            }
+
+            if(MSG_PEEK == flag && (recv_syscall == 175 || recv_syscall == 176))
+            {
+                //printf("recv msg_peek\n");
+            }
+            else
+            {
+                buf_read_index+=ret;
+                
+            }
+            printf("recv length:%d\n", ret);
+        }
+    }
+#ifdef TARGET_MIPS
+    env->active_tc.gpr[2] = ret;
+#elif defined(TARGET_ARM)
+    env->regs[0] = ret;
+#endif
+}  
 
 #endif //FEED_INPUT
 
@@ -833,7 +896,7 @@ void exception_exit(int syscall_num)
     write_aflcmd_complete(cmd, &user_mode_time);
     if(print_debug)
     {
-        printf("exit syscall:%d\n\n\n\n\n\n", syscall_num);
+        printf("exception exit syscall:%d\n\n\n\n\n\n", syscall_num);
     }
 }
 
@@ -863,7 +926,7 @@ void normal_exit(int syscall_num)
     user_mode_time.restore_page_time = restore_page_total;
     user_mode_time.user_syscall_count = user_syscall_count;
     user_mode_time.store_count = store_count;
-    printf("exit syscall:%d\n\n\n\n\n\n", syscall_num);
+    printf("normal exit syscall:%d\n\n\n\n\n\n", syscall_num);
     //write_aflcmd(cmd, &user_mode_time);
     write_aflcmd_complete(cmd, &user_mode_time);
 
@@ -975,6 +1038,7 @@ int count_20 = 0;
 int last_syscall = 0;
 int count_3 = 0;
 int monitor_fd = 0;
+
 
 void exit_func(int syscall_num, int program_id)
 {
@@ -3532,7 +3596,7 @@ void cpu_loop(CPUMIPSState *env)
                 int network_handle = 0;
 
 #ifdef FEED_INPUT
-                ret = feed_input(syscall_num, env, &network_handle);
+                //ret = feed_input(syscall_num, env, &network_handle);
 #endif
 
 #ifdef LMBENCH //lmbench use fork system call for lat_pipe
@@ -7115,6 +7179,9 @@ void parse_mapping_table(char *filename)
     accept_fd = strtol(strline, NULL, 10);
     res = fgets(strline, 100, fp);
     CP0_UserLocal = strtol(strline, NULL, 16);
+    res = fgets(strline, 100, fp);
+    recv_syscall = strtol(strline, NULL, 10);
+    recv_syscall -= 4000;
     fclose(fp);
 }
 
@@ -7597,7 +7664,7 @@ void restore_page_exception()
             uintptr_t dst = tmp_p-> prev_addr;
             uintptr_t src = tmp_p-> curr_addr;
             int flag = tmp_p->flag;
-            printf("restore:%lx,%lx\n", src,dst);
+            //printf("restore:%lx,%lx\n", src,dst);
             memcpy(dst, src, 0x1000);
             if(flag == 1)
             {

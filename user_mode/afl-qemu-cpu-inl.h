@@ -319,6 +319,7 @@ int fork_times = 0;
       afl_setup(); \
       afl_forkserver(cpu); \
       get_input(cpu); \
+      feed_input(cpu); \
     } \
     afl_maybe_log(pc); \
   } while (0)

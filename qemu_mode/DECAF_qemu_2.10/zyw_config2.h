@@ -1,4 +1,4 @@
-#define CAL_TIME
+//#define CAL_TIME
 // #define CAL_TIME_ext //frequent opreration like code generation and page storing 
 
 int program_start = 0;
