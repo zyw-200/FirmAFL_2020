@@ -1,4 +1,4 @@
-#define FULL
+//#define FULL
 
 #ifdef FULL
 
