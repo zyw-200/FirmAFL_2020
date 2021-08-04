@@ -1534,6 +1534,7 @@ static void CALLBACK dummy_apc_func(ULONG_PTR unused)
 
 #ifdef MEM_MAPPING
 
+extern target_ulong mem_addr;
 
 CPUState *restart_cpu = NULL;    /* cpu to restart */
 int first_wants_to_stop = 0;
@@ -2120,17 +2121,7 @@ static void qemu_dummy_start_vcpu(CPUState *cpu)
 
 
 
-void restart()
-{
-        
-        single_tcg_cpu_thread = NULL;
-        first_cpu = restart_cpu;
-        first_cpu->halted = 0; //add at July 16, 2019
-        cpu_enable_ticks();
-        first_cpu->interrupt_request = 0; //important;
-        first_cpu->exception_index = -1; 
-        qemu_cond_broadcast(first_cpu->halt_cond);
-}
+
 
 void fork_test()
 {
@@ -2153,6 +2144,18 @@ void fork_test()
     }
 }
 
+void restart()
+{
+        
+        single_tcg_cpu_thread = NULL;
+        first_cpu = restart_cpu;
+        first_cpu->halted = 0; //add at July 16, 2019
+        cpu_enable_ticks();
+        first_cpu->interrupt_request = 0; //important;
+        first_cpu->exception_index = -1; 
+        qemu_cond_broadcast(first_cpu->halt_cond);
+}
+
 #ifdef SHOW_SYSCALL_TRACE
 extern FILE * sys_trace_fp;
 extern FILE * previous_trace_fp;
@@ -2163,6 +2166,9 @@ extern int afl_user_fork;
 extern struct timeval tmp_begin;
 //lightweight snapshot
 #if defined(FUZZ) && !defined(MEM_MAPPING)
+
+
+
 static void
 gotPipeNotification(void *ctx)
 {
@@ -2183,6 +2189,7 @@ gotPipeNotification(void *ctx)
 //zyw
 #ifndef QEMU_SNAPSHOT
 #ifdef FORK_OR_NOT
+        printf("afl_forkserver\n");
         afl_forkserver(env);
         spawn_thread_after_fork();
         single_tcg_cpu_thread = NULL;

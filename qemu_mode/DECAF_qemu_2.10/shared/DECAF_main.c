@@ -77,13 +77,28 @@ int g_bNeedFlush = 0;
 
 static void convert_endian_4b(uint32_t *data);
 
+#ifdef TARGET_ARM
+extern int httpd_pgd;
+extern int fork_times;
+#endif
+
 static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {
 	CPUArchState * env_ptr = (CPUArchState *)env->env_ptr;
 	int mmu_idx, index;
 	uint32_t phys_addr;
-	
 	index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
 	mmu_idx = cpu_mmu_index(env, true); //zyw
+	#ifdef TARGET_ARM
+	if(fork_times == 1)
+	{
+		mmu_idx = 1;
+		//printf("mmu_idx:%x\n", mmu_idx);
+		if(addr > 0xc0000000)
+		{
+			return addr & 0xfffffff;
+		}
+	}
+	#endif
 	if (__builtin_expect(
 			env_ptr->tlb_table[mmu_idx][index].addr_read
 					!= (addr & TARGET_PAGE_MASK), 0)) {
@@ -132,6 +147,16 @@ gpa_t DECAF_get_phys_addr(CPUState* env, gva_t addr)
 
 	phys_addr = _DECAF_get_phys_addr(env, addr);
 
+		//zyw
+#ifdef TARGET_ARM
+	if(phys_addr <0x10000000 )
+	//if(phys_addr <0x10000000 && httpd_pgd)
+	{
+		phys_addr = phys_addr + 0x40000000;
+		//printf("phys_addr:%lx,%lx\n",page, phys_addr);
+	}
+#endif	
+
 	// restore hflags
 #ifdef TARGET_MIPS
 	env_ptr->hflags = ori_hflags;
@@ -140,9 +165,7 @@ gpa_t DECAF_get_phys_addr(CPUState* env, gva_t addr)
 
 }
 
-#ifdef TARGET_ARM
-extern int httpd_pgd;
-#endif
+
 
 DECAF_errno_t DECAF_memory_rw(CPUState* env, /*uint32_t*/target_ulong addr, void *buf, int len,
 		int is_write) {
@@ -164,16 +187,7 @@ DECAF_errno_t DECAF_memory_rw(CPUState* env, /*uint32_t*/target_ulong addr, void
 
 		phys_addr = DECAF_get_phys_addr(env, page);
 
-		//zyw
-#ifdef TARGET_ARM
-		if(phys_addr <0x10000000 )
-		//if(phys_addr <0x10000000 && httpd_pgd)
-		{
-			phys_addr = phys_addr + 0x40000000;
-			//printf("phys_addr:%lx,%lx\n",page, phys_addr);
-		}
-#endif
-		
+			
 
 #ifdef TARGET_ARM //for arm phys_addr seem >0x4000000 ram_size = 0x10000000
 		if (phys_addr == -1) {
@@ -652,6 +666,7 @@ void DECAF_init(void) {
 	procmod_init();
 #else
 	VMI_init();
+	//linux_vmi_init(); //zyw
 #endif
 }
 

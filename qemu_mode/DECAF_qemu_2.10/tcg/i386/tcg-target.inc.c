@@ -1824,6 +1824,7 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
                      label_ptr, offsetof(CPUTLBEntry, addr_write));
 #ifdef STORE_PAGE_FUNC
     tcg_out_push(s, datalo);
+    //tcg_out_push(s, TCG_REG_L1);
     tcg_out_push(s, tcg_target_call_iarg_regs[0]);
     tcg_out_push(s, tcg_target_call_iarg_regs[1]);
     tcg_out_push(s, tcg_target_call_iarg_regs[2]);
@@ -1831,12 +1832,13 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
     //tcg_out_mov(s, TCG_TYPE_I32, tcg_target_call_iarg_regs[1], addrlo);   //paddr
     tcg_out_mov(s, TCG_TYPE_I32, tcg_target_call_iarg_regs[0], addrlo); //vaddr
     tcg_out_mov(s, TCG_TYPE_I32, tcg_target_call_iarg_regs[2], datalo);//value
-     
+
     tcg_out_call(s, (tcg_target_long)st_cb);
 
     tcg_out_pop(s, tcg_target_call_iarg_regs[2]);
     tcg_out_pop(s, tcg_target_call_iarg_regs[1]);
     tcg_out_pop(s, tcg_target_call_iarg_regs[0]);
+    //tcg_out_pop(s, TCG_REG_L1);
     tcg_out_pop(s, datalo);
 #endif
     /* TLB Hit.  */

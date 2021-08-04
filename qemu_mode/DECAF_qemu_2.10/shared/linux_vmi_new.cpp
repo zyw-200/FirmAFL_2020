@@ -506,7 +506,6 @@ static void new_proc_callback(DECAF_Callback_Params* params)
 {
     CPUState *env = params->bb.env;
     target_ulong pc = DECAF_getPC(env);
-
     if(OFFSET_PROFILE.proc_exec_connector != pc &&OFFSET_PROFILE.proc_fork_connector != pc)
         return;
 
@@ -632,6 +631,7 @@ target_ulong mips_get_cur_cr3(CPUState *env)
 }
 */
 
+target_ulong kernel_fatal_signal = 0;
 // to see whether this is a Linux or not,
 // the trick is to check the init_thread_info, init_task
 int find_linux(CPUState *env, uintptr_t insn_handle)
@@ -656,7 +656,7 @@ int find_linux(CPUState *env, uintptr_t insn_handle)
     }
 
     //monitor_printf(cur_mon, "swapper task @ [%08x] \n", OFFSET_PROFILE.init_task_addr);
-
+    kernel_fatal_signal = OFFSET_PROFILE.kernel_fatal_signal;
     VMI_guest_kernel_base = 0xc0000000;
 
     return (1);
@@ -668,9 +668,9 @@ int find_linux(CPUState *env, uintptr_t insn_handle)
 void linux_vmi_init()
 { 	
 	DECAF_registerOptimizedBlockBeginCallback(&new_proc_callback, NULL, OFFSET_PROFILE.proc_exec_connector, OCB_CONST);
-	DECAF_registerOptimizedBlockBeginCallback(&new_kmod_callback, NULL, OFFSET_PROFILE.trim_init_extable, OCB_CONST);
+	//DECAF_registerOptimizedBlockBeginCallback(&new_kmod_callback, NULL, OFFSET_PROFILE.trim_init_extable, OCB_CONST);
 	DECAF_registerOptimizedBlockBeginCallback(&proc_end_callback, NULL, OFFSET_PROFILE.proc_exit_connector, OCB_CONST);
-    DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
+    //DECAF_register_callback(DECAF_TLB_EXEC_CB, Linux_tlb_call_back, NULL);
 
 	process *kernel_proc = new process();
 	kernel_proc->cr3 = 0;
@@ -780,6 +780,9 @@ gpa_t mips_get_cur_pgd(CPUState *env){
 #endif
 
 //zyw
+extern target_ulong code_start;
+extern target_ulong code_end;
+
 void traverse_mmap_new(CPUState *env, void *opaque, FILE *fp)
 {
     process *proc = (process *)opaque;
@@ -832,6 +835,11 @@ void traverse_mmap_new(CPUState *env, void *opaque, FILE *fp)
         fprintf(fp, "%x:", vma_vm_start);
         fprintf(fp, "%x:", vma_vm_end);
         fprintf(fp, "%x:", vma_flags);
+        if(count == 1)
+        {
+            code_start = vma_vm_start;
+            code_end = vma_vm_end;
+        }
 
 //
          

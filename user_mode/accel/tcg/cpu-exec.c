@@ -645,6 +645,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 }
 
 int transfer_flag = 0 ;
+target_ulong s1s1s1 = 0;
 extern void* g2h_helper(target_ulong x);
 /* main execution loop */
 target_ulong last_pc = 0;
@@ -839,7 +840,12 @@ int cpu_exec(CPUState *cpu)
                 gettimeofday(&lmbench_start, NULL);
             }
 #endif //lmbench
-
+            /*   
+            if(pc < 0x10000000)
+            {
+                printf("pc:%x\n", pc);
+            } 
+            */  
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
             /* Try to align the host and virtual clocks

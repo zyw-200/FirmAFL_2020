@@ -1694,7 +1694,7 @@ void _load_one_section(const boost::property_tree::ptree &pt, int iSectionNum, P
     FILL_TARGET_ULONG_FIELD(dentry_d_parent );
     FILL_TARGET_ULONG_FIELD(ti_task         );
 	FILL_TARGET_ULONG_FIELD(inode_ino);
-
+  FILL_TARGET_ULONG_FIELD(kernel_fatal_signal);
 	FILL_TARGET_ULONG_FIELD(proc_fork_connector);
 	FILL_TARGET_ULONG_FIELD(proc_exit_connector);
 	FILL_TARGET_ULONG_FIELD(proc_exec_connector);

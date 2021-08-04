@@ -2471,7 +2471,7 @@ void tlb_fill(CPUState *cs, target_ulong addr, MMUAccessType access_type,
     {
         if(afl_user_fork && addr == handle_addr)
         {
-            printf("ret addr:%x, addr:%x, access_type:%d, mmu_idx:%d\n", retaddr, addr, access_type, mmu_idx);
+            //printf("ret addr:%x, addr:%x, access_type:%d, mmu_idx:%d\n", retaddr, addr, access_type, mmu_idx);
             if (retaddr) {
                 /* now we have a real cpu fault */
                 cpu_restore_state(cs, retaddr);

@@ -2379,7 +2379,6 @@ target_ulong ins_pc_analysis(uintptr_t searched_pc, int error_addr)
     uint8_t buf[4];
    
     CPUArchState *env = first_cpu->env_ptr;
-
     TranslationBlock * tb = tb_find_pc(searched_pc);
     if(tb==NULL)
     {
@@ -2413,7 +2412,7 @@ target_ulong ins_pc_analysis(uintptr_t searched_pc, int error_addr)
     return -1;
 
  found:
-
+    env->regs[15] = data[0]; //zyw 20210706
     cpu_memory_rw_debug(first_cpu, data[0], buf, 4, 0);
 
     //printf("data0:%x, buf %x,%x, %x, %x\n",data[0], buf[3], buf[2], buf[1], buf[0]);
@@ -2504,7 +2503,7 @@ target_ulong ins_pc_analysis(uintptr_t searched_pc, int error_addr)
             {
                 
                 addr =env->regs[rn] + offset;
-                //printf("add addr:%x\n", addr);
+                //printf("add addr:%x, pc:%x\n", addr, env->regs[15]);
             }
             else
             {   
@@ -2517,8 +2516,8 @@ target_ulong ins_pc_analysis(uintptr_t searched_pc, int error_addr)
     {
         addr = offset;
     }
-    
-    if(addr == error_addr)
+    //printf("ins_pc_analysis:%x,%x\n", addr, error_addr);
+    if(addr == error_addr || addr + 4 == error_addr || addr + 8 == error_addr)
     {
         return data[0];
     }

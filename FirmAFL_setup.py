@@ -67,6 +67,7 @@ elif cmp(firm_id, "129781") == 0:
 	os.system("cp FirmAFL_config/missing_file/129781/net.conf image_129781/var/config/net.conf_ori")
 elif cmp(firm_id, "10853") == 0:
 	os.system("mkdir image_10853/var/run/")
+	os.system("mkdir image_10853/var/etc/")
 	os.system("cp FirmAFL_config/missing_file/10853/nvram.conf image_10853/var/etc/")
 	os.system("cp FirmAFL_config/missing_file/10853/rc.pid image_10853/var/run/")
 	os.system("cp FirmAFL_config/missing_file/10853/httpd.pid image_10853/var/run/")
