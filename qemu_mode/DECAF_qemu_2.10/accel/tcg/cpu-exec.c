@@ -357,8 +357,7 @@ int write_package(CPUState *cpu, int vir_addr, char* cont, int len)
     int ret = DECAF_write_mem(cpu, vir_addr, len, cont);
     if(ret ==-1)
     {
-        DECAF_printf("write failed %x,%x\n", vir_addr, len);
-        sleep(1000);
+        //DECAF_printf("write_package return -1 %x,%x\n", vir_addr, len);
     }
     else
     {
@@ -557,7 +556,6 @@ int check_http_header(char * input) // if all are readable charater before =
 
 int feed_input(CPUState * cpu)
 {
-    printf("feed_input\n");
     if(strcmp(feed_type, "FEED_ENV") == 0)
     {
         if(pre_feed_finish == 0)
@@ -578,10 +576,10 @@ int feed_input(CPUState * cpu)
             return 2;
         }
         //DECAF_printf("feed_input: %x, %s\n", content_addr, input_buf);
-#ifdef TARGET_MIPS
+
         CPUArchState *env = cpu->env_ptr;
         get_page_addr_code(env, content_addr); //important
-#endif
+
         int ret = DECAF_write_mem(cpu, content_addr, get_len, input_buf);
         DECAF_write_mem(cpu, content_addr + get_len, 1, "\0"); //important
 
@@ -653,6 +651,10 @@ int feed_input(CPUState * cpu)
         char cmd_str[256];
         DECAF_read_mem(cpu, cmd_addr, 256, cmd_str);
         printf("cmd is %s\n", cmd_str);
+        */
+        /*
+        CPUArchState *env = cpu->env_ptr;
+        get_page_addr_code(env, feed_addr); //important
         */
         char input_buf[MAX_LEN];
         int get_len = getWork(input_buf, MAX_LEN);
@@ -2060,7 +2062,7 @@ int record_current_state(CPUState *cpu)
     before_syscall_stack = env->regs[13];
     curr_state_pc = env->regs[15];
     into_syscall = arm_syscall(cpu);
-    if(afl_user_fork) printf("into_syscall:%d,%lx,%lx\n", into_syscall, curr_state_pc, before_syscall_stack);
+    //if(afl_user_fork) printf("into_syscall:%d,%lx,%lx\n", into_syscall, curr_state_pc, before_syscall_stack);
 #endif
 }
 
@@ -2440,7 +2442,6 @@ int feed_input_helper(CPUState *cpu, target_ulong pc)
     {
         target_ulong pgd = DECAF_getPGD(cpu);
         assert(target_pgd!=0);
-        printf("feed_input_helper pgd:%x,%x\n", pgd, target_pgd);
         if(pgd == target_pgd) {
             int res = feed_input(cpu);
             feed_times = 1;

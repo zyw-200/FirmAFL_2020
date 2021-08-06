@@ -285,7 +285,6 @@ void afl_forkserver(CPUArchState *env){
 //zyw
       //memset(afl_area_ptr, 0, 65536*sizeof(unsigned char));
 
-      DECAF_printf("new iteration\n");
       gettimeofday(&loop_begin, NULL);
 //     
       afl_fork_child = 1;
@@ -315,7 +314,6 @@ void afl_forkserver(CPUArchState *env){
     //printf("exit status:%d\n", status);
     if (waitpid(child_pid, &status, 0) < 0) exit(6);
     if (write(FORKSRV_FD + 1, &status, 4) != 4) exit(7);
-    DECAF_printf("child end\n");
 
     //fclose(file_log);
   }
