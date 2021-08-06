@@ -112,6 +112,24 @@ rm "${IMAGE_DIR}/busybox"
 #rm "${IMAGE_DIR}/usr/sbin/fresetd" #9925
 #cp "../firmadyne_modify/webs_9925.sh" "${IMAGE_DIR}/etc/templates/webs.sh" #9925
 #cp "../firmadyne_modify/http-loop_9925.sh" "${IMAGE_DIR}/http-loop.sh" #9925
+#cp "../firmadyne_modify/rcS" "${IMAGE_DIR}/usr/etc/" #3752
+#cp "../firmadyne_modify/service_httpd.sh" "${IMAGE_DIR}/etc/init.d/" #332
+#cp "../firmadyne_modify/01_init.sh" "${IMAGE_DIR}etc/registration.d/" #332
+
+if [ $IID -eq 9050 ]
+then
+    rm "${IMAGE_DIR}/etc/init.d/S45gpiod.sh" #9050 dlink
+elif [ $IID -eq 9054 ]
+then
+    rm "${IMAGE_DIR}/usr/sbin/gpiod"
+elif [ $IID -eq 9925 ]
+then
+    cp "../firmadyne_modify/webs_9925.sh" "${IMAGE_DIR}/etc/templates/webs.sh" #9925
+    cp "../firmadyne_modify/http-loop_9925.sh" "${IMAGE_DIR}/http-loop.sh" #9925
+elif [ $IID -eq 332 ]
+then
+    cp "../firmadyne_modify/01_init.sh" "${IMAGE_DIR}etc/registration.d/"
+fi
 
 echo "----Setting up FIRMADYNE----"
 cp "${CONSOLE}" "${IMAGE_DIR}/firmadyne/console"
