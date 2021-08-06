@@ -41,7 +41,7 @@ Our system has two parts: system mode and user mode. We compile them separately 
 
 1.  Download the Firmdyne repo to the root directory of FirmAFL, then setup the firmadyne according to its instructions including importing its datasheet https://cmu.app.boxcn.net/s/hnpvf1n72uccnhyfe307rc2nb9rfxmjp into database.
 
-2.  Replace the scripts/makeImage.sh with modified one in firmadyne_modify directory.
+2.  Replace the scripts/makeImage.sh, scripts/makeNetwork.py with modified one in firmadyne_modify directory.
 
 3.  follow the guidance from firmadyne to generate the system running scripts. 
 >Take DIR-815 router firmware as a example,
