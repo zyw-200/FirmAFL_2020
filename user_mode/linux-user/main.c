@@ -3762,7 +3762,7 @@ void cpu_loop(CPUMIPSState *env)
                 }
 
                 else{
-                    printf("remote sys num:%d, pc:%x, arg:%x,%x,%x, pid:%d\n", syscall_num, env->active_tc.PC, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6], getpid());
+                    //printf("remote sys num:%d, pc:%x, arg:%x,%x,%x, pid:%d\n", syscall_num, env->active_tc.PC, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6], getpid());
                     user_syscall_flag = 0;
                     env->active_tc.PC -= 4; //very important
                     gettimeofday(&handle_state_start, NULL);
@@ -3839,7 +3839,6 @@ void cpu_loop(CPUMIPSState *env)
                 }
 #endif
             }
-            printf("syscall num end:%d, %d\n", syscall_num, ret);
             //last_syscall = syscall_num;
 done_syscall:
 # else
@@ -6536,7 +6535,8 @@ int main(int argc, char **argv, char **envp)
 //snapshot memory
 #ifdef STORE_PAGE_FUNC
     snapshot_shmem_id = shmget(0, 1024*1024*16, IPC_CREAT|IPC_EXCL);
-    snapshot_shmem_start = shmat(snapshot_shmem_id, 0x80200000 , 0); //zyw 
+    //snapshot_shmem_start = shmat(snapshot_shmem_id, 0x80200000 , 0); //zyw 
+    snapshot_shmem_start = shmat(snapshot_shmem_id, NULL , 0); //zyw 
     snapshot_shmem_pt = snapshot_shmem_start + 8 * 0x1000; // 0x80200000 ~ 0x81200000
     printf("snapshot memory:%lx,%lx,%lx\n", snapshot_shmem_id, snapshot_shmem_start, snapshot_shmem_pt);
 #endif
@@ -6544,11 +6544,11 @@ int main(int argc, char **argv, char **envp)
 //memory for snapshot synchronization
 #ifdef SNAPSHOT_SYNC
 #ifdef TARGET_MIPS
-      void * sync_shmem_start = shmat(syn_shmem_id, guest_base + 0x182000000 +  1024*1024*16,  1); 
+      //void * sync_shmem_start = shmat(syn_shmem_id, guest_base + 0x182000000 +  1024*1024*16,  1); 
 #elif defined(TARGET_ARM)
-      void * sync_shmem_start = shmat(syn_shmem_id, 0x81200000 +  1024*1024*16,  1); 
+      //void * sync_shmem_start = shmat(syn_shmem_id, 0x81200000 +  1024*1024*16,  1); 
 #endif
-      //sync_shmem_start = shmat(syn_shmem_id, NULL,  1); 
+      void * sync_shmem_start = shmat(syn_shmem_id, NULL,  1); 
       printf("snapshot phys addr:%d, %lx, %lx\n",syn_shmem_id, guest_base, sync_shmem_start);
       //memset(sync_shmem_start, 0, 8192); //131071
       memset(sync_shmem_start, 0, 131072); //131071
@@ -6677,10 +6677,8 @@ int main(int argc, char **argv, char **envp)
             //
 
 //#ifdef TARGET_MIPS
-            printf("pre mapping start:%lx\n", page.addr);
             write_addr(&page);
             read_addr(page.addr, &phys_page);
-            printf("pre mapping finished:%lx, %lx\n", page.addr, phys_page);
 /*
 #elif defined(TARGET_ARM)
             if(page_prot == 5)
@@ -6936,7 +6934,6 @@ void add_store_write_page(target_ulong vaddr)
     target_ulong index = value >> 3;
     target_ulong position = value & 0x07;
     stored_vaddr_page[index] |=  1 << position;
-    printf("################### add %x, value:%x, index:%x\n",vaddr, value, index);
 }
 
 void delete_store_write_page(target_ulong vaddr)
@@ -6952,7 +6949,6 @@ int if_write_page_store(target_ulong vaddr) //vaddr <= 0x7ffff000
     target_ulong value = vaddr >> 12;
     target_ulong index = value >> 3;
     target_ulong position = value & 0x07;
-    if((stored_vaddr_page[index] & (1 << position)) !=0) printf("if write page:%x,%x\n", value, index);
     return (stored_vaddr_page[index] & (1 << position)) !=0; 
 
 }
@@ -7478,7 +7474,7 @@ int write_addr(MISSING_PAGE *page)
             fprintf(stderr, "Write addr error:%x\n", page->addr);  sleep(1000);
             exit(EXIT_FAILURE);  
         }  
-        printf("write addr ok:%lx, prot:%d\n", page->addr, page->prot);   
+        //printf("write addr ok:%lx, prot:%d\n", page->addr, page->prot);   
     }  
     else { 
         printf("write addr pipe not open error\n");sleep(1000);
