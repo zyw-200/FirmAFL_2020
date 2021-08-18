@@ -389,7 +389,6 @@ int VMI_remove_process(uint32_t pid)
 	process_map.erase(iter->second->cr3);
 	delete iter->second;
 	process_pid_map.erase(iter);
-
 	return 0;
 }
 
