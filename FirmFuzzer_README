@@ -1,0 +1,44 @@
+# USAGE
+
+	docker run -it --env USER=root --privileged -it  --device=/dev/net/tun  zyw200/firmfuzzer /bin/bash
+
+
+#### in the docker container
+	tmux 
+	cd test/image_xxx
+
+#### full-system emulation:
+	./run_full.sh
+	after a while, python test.py
+
+#### Firmfuzzer
+	./run.sh
+	after a while, python test.py
+	then, ./user.sh
+
+firmware                  				ID
+DIR-815_FIRMWARE_1.01.ZIP 				9050
+DIR-817LW_REVA_FIRMWARE_1.00B05.ZIP 	9054
+DIR-825_REVB_FIRMWARE_2.02.ZIP			10853
+DAP-2695_REVA_FIRMWARE_1.11.RC044.ZIP	9925
+DIR-850L_FIRMWARE_1.03.ZIP 				10566
+fw_tv-ip110wn_v2(1.2.2.68).zip  		129780 (video.cgi) 129781 (network.cgi)
+FW_EA6900_1.1.42.161129_prod.img 		332 ARM
+
+Notes:
+# configurations and usage
+
+Full-emulation: 
+  Python Full_setup.py 9050 mipsel
+  cd image_9050
+  python start_full.py 9050
+
+FirmAFL: 
+  python FirmAFL_setup.py 9050 mipsel
+  cd image_9050
+  python start.py 9050
+
+
+Issues:
+
+For firwmare fw_tv-ip110wn_v2(1.2.2.68).zip, firmadyne generate image_12978, please copy to image_129780 and image_129781 for two fuzzing works(video.cgi, network.cgi).
