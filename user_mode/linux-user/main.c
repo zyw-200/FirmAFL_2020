@@ -3765,7 +3765,7 @@ void cpu_loop(CPUMIPSState *env)
                     //printf("remote sys num:%d, pc:%x, arg:%x,%x,%x, pid:%d\n", syscall_num, env->active_tc.PC, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6], getpid());
                     user_syscall_flag = 0;
                     env->active_tc.PC -= 4; //very important
-                    gettimeofday(&handle_state_start, NULL);
+                    //gettimeofday(&handle_state_start, NULL);
                     //printf("time:%f, remote syscall:%d, arg:%x,%x,%x,%x\n",handle_state_start.tv_sec + handle_state_start.tv_usec/1000000.0, 
                         //syscall_num, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6]);
                     //printf("syscall:%d\n", syscall_num);
@@ -3831,10 +3831,10 @@ void cpu_loop(CPUMIPSState *env)
                         printf("munmap ##########################\n");
 
                     }
-                    gettimeofday(&handle_state_end, NULL);
+                    //gettimeofday(&handle_state_end, NULL);
                     //printf("time: %f, ret value:%x\n", handle_state_end.tv_sec + handle_state_end.tv_usec/1000000.0, ret);
-                    handle_state_total += (double)handle_state_end.tv_sec - handle_state_start.tv_sec + (handle_state_end.tv_usec - handle_state_start.tv_usec)/1000000.0;
-                    printf("handle time:%f\n", handle_state_total);
+                    //handle_state_total += (double)handle_state_end.tv_sec - handle_state_start.tv_sec + (handle_state_end.tv_usec - handle_state_start.tv_usec)/1000000.0;
+                    //printf("handle time:%f\n", handle_state_total);
                     //printf("syscall num end:%d\n", syscall_num);
                 }
 #endif

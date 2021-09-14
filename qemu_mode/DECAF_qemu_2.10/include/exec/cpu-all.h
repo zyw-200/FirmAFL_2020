@@ -218,9 +218,9 @@ extern bool target_page_bits_decided;
 extern int target_page_bits;
 //zyw
 #define TARGET_PAGE_BITS 12
-//#define TARGET_PAGE_BITS target_page_bits
-//#define TARGET_PAGE_BITS ({ assert(target_page_bits_decided); target_page_bits; })
-
+//#define TARGET_PAGE_BITS  target_page_bits
+//#define TARGET_PAGE_BITS ({ assert(target_page_bits_decided); \
+                            target_page_bits; })
 #else
 #define TARGET_PAGE_BITS_MIN TARGET_PAGE_BITS
 #endif

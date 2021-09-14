@@ -2915,7 +2915,7 @@ skip_to_pos:
                         target_ulong addr_write = env->tlb_table[0][ind].addr_write;
                         uintptr_t addend = env->tlb_table[0][ind].addend;
 #endif
-                        //DECAF_printf("pc is:%x, into normal execution:%x, %x,%x,%x, %lx\n",pc, handle_addr, addr_code, addr_read, addr_write,addend);        
+                        DECAF_printf("pc is:%x, into normal execution:%x, %x,%x,%x, %lx\n",pc, handle_addr, addr_code, addr_read, addr_write,addend);        
                         if(!find_tlb_backup(ind))
                         {
                             record_tlb(ind, addr_code, addr_read, addr_write, addend);
