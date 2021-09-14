@@ -5,12 +5,12 @@ firm_id = sys.argv[1]
 firm_arch = sys.argv[2]
 firm_dir = "image"+firm_id
 
-'''
-cmd = "python generate_run_firmafl.py %s %s" %(firm_id, firm_arch)
+os.system("echo core >/proc/sys/kernel/core_pattern")
+os.system("cd /sys/devices/system/cpu\necho performance | tee cpu*/cpufreq/scaling_governor\ncd -")
+
+cmd = "python generate_run_full.py %s %s" %(firm_id, firm_arch)
 os.system(cmd)
-sys_run_src = "firmadyne/scratch/%s/run_firmafl.sh" %(firm_id)
-'''
-sys_run_src = "FirmAFL_config/%s/run.sh" %(firm_id)
+sys_run_src = "firmadyne/scratch/%s/run_full.sh" %(firm_id)
 user_run_src = "FirmAFL_config/%s/user.sh" %firm_id
 if "mips" in firm_arch:
 	sys_src = "qemu_mode/DECAF_qemu_2.10/%s-softmmu/qemu-system-%s" %(firm_arch, firm_arch)
@@ -21,7 +21,7 @@ else:
 config_src = "FirmAFL_config/%s/FirmAFL_config" %(firm_id)
 test_src = "FirmAFL_config/%s/test.py" %(firm_id)
 keywords_src = "FirmAFL_config/%s/keywords" %(firm_id)
-afl_src= "FirmAFL_config/afl-fuzz"
+afl_src= "FirmAFL_config/afl-fuzz-full"
 firmadyne_src = "firmadyne/firmadyne.config"
 image_src = "firmadyne/scratch/%s/image.raw" %firm_id
 if "mips" in firm_arch:
@@ -33,7 +33,7 @@ other_file1 =  "FirmAFL_config/efi-pcnet.rom"
 other_file2 =  "FirmAFL_config/vgabios-cirrus.bin"
 cmd_input = "mkdir image_%s/inputs" %firm_id
 seed_src = "FirmAFL_config/%s/seed" %(firm_id)
-start_src = "FirmAFL_config/start.py"
+start_src = "FirmAFL_config/start_full.py"
 
 dst = "image_%s/" %firm_id
 dst_input = "image_%s/inputs/" %firm_id
