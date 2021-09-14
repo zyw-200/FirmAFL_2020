@@ -1,0 +1,141 @@
+#!/bin/sh
+
+export PATH=$PATH:/sbin:/bin:/usr/sbin:/usr/bin:/scripts
+
+UTC=yes
+
+echo "executing rcS ..."
+
+# This script runs when init it run during the boot process.
+# Mounts everything in the fstab
+
+mount -n -t proc proc /proc
+mount -n -t ramfs ramfs /tmp
+mount -n -t devpts devpts /dev/pts
+
+# build var directories 
+chmod 777 /tmp
+/bin/mkdir -m 0777 /tmp/var
+/bin/mkdir -m 0777 /tmp/hw_info
+/bin/mkdir -m 0777 /tmp/etc
+/bin/mkdir -m 0777 /var/lock
+/bin/mkdir -m 0777 /var/log
+/bin/mkdir -m 0777 /var/run
+/bin/mkdir -m 0777 /var/tmp
+/bin/mkdir -m 0755 /etc/dnrd
+
+/bin/cp -a /usr/etc/* /etc
+
+/bin/chmod +x /etc/udhcpc.script
+
+mount -n -t sysfs /sys
+#mount -t jffs2 /dev/mtdblock4 /mnt/jffs2
+
+# enable kernel debug when starting
+echo '8'>/proc/sys/kernel/printk
+
+# enable auto reboot when crash
+echo '1' > /proc/sys/vm/panic_on_oom
+echo '1' > /proc/sys/kernel/panic
+
+# led and push button
+/sbin/insmod /lib/modules/led_pb_api.ko
+
+# blink power red to indicate starting
+led_app off 73
+led_app blink_always 73 10 200 200 0&
+
+multi_pb_app 92 93 10 150 &
+
+#/sbin/ifconfig eth1_0 192.168.1.1 
+#/sbin/ifconfig eth1_0 up
+#/usr/sbin/brctl addbr br0
+#/usr/sbin/brctl addif br0 eth1_0
+#/sbin/ifconfig br0 192.168.1.1
+
+ifconfig lo 127.0.0.1
+route add -net 127.0.0.0 netmask 255.0.0.0 lo
+
+scfgmgr
+cmd_agent
+
+rc init
+
+# start quantenna modules, we need start qdrv before rc init, because
+# 3-way switch don't work until qdrv started
+modprobe i2cbus
+modprobe qtsens
+modprobe qdrv
+modprobe wlan_ccmp
+modprobe wlan_tkip
+modprobe wlan_xauth
+modprobe bootcfg
+
+bv=`cat /proc/bootcfg/env | grep calstate | sed -e 's/.*=//g'`
+if [ -z $bv ]
+then
+	bv=1
+fi
+
+if [ "$bv" = "1" ]
+then
+    # flash led to indicate the calibration mode
+    led_app off 71
+    led_app blink_always 71 10 200 200 0
+    # quantenna calibration need tprofile.txt in bootcfg
+    if [ ! -f /proc/bootcfg/tprofile.txt ];then
+        echo "create tprofile.txt 0x3b" > /proc/bootcfg/env
+        echo "27, 33, 39, 44, 49, 54, 56, 61, 64, 67, 72, 76, 79, 83, 87" > /proc/bootcfg/tprofile.txt
+    fi
+    rc calfw start
+    telnetd
+    #/bin/busybox usleep 1 #zyw
+    #/bin/busybox ps -ls #zyw
+    #/bin/busybox #zyw
+    /bin/busybox basename aaa #no applet
+    exit 0
+else
+    /bin/echo "set debug 0x00000003" > /sys/devices/qdrv/control
+    /bin/echo "set level 1" > /sys/devices/qdrv/control
+    /bin/echo "set no_led 1" > /sys/devices/qdrv/control
+    /bin/echo "set mucfw qtn_driver.0.bin" > /sys/devices/qdrv/control
+    /bin/echo "set dspfw dsp_driver.bin" > /sys/devices/qdrv/control 
+    /bin/echo "start" > /sys/devices/qdrv/control
+    /bin/sleep 1
+fi
+rc pot start
+rc lan start
+rc timezone start
+
+rc syslogd start
+#rc wifi-mode start
+rc dhcpd start
+#rc httpd start
+
+rc bridge start &
+#rc wan start
+#rc timezone start
+
+# retail firmware should enable dnshijack and disable telnet interface
+dnshj=`nvram get dnshj_enable | grep dnshj | sed -e 's/.*=//g'`
+if [ "$dnshj" = "1" ]
+then
+    /sbin/insmod /lib/modules/dhj.ko
+    dnshk_app&
+else
+    telnetd
+fi
+
+ftd&
+
+timerd&
+
+# increase socket queue
+echo '262144'>/proc/sys/net/core/rmem_max
+
+# diable kernel debug
+#echo '1'>/proc/sys/kernel/printk
+#disable flash block 
+#echo "" >> /dev/mtdblock4
+
+
