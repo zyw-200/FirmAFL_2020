@@ -29,11 +29,13 @@ Notes:
 # configurations and usage
 
 Full-emulation: 
+  In zyw_config1.h,  #define FULL, then compile
   Python Full_setup.py 9050 mipsel
   cd image_9050
   python start_full.py 9050
 
 FirmAFL: 
+  In zyw_config1.h, remove #define FULL, then compile
   python FirmAFL_setup.py 9050 mipsel
   cd image_9050
   python start.py 9050

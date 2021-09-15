@@ -15,8 +15,15 @@ def generate_run_full(image_id, arch):
 			archh = arch
 			if cmp(arch, "mipseb") == 0:
 				archh = "mips"
+			elif cmp(arch, "armel") == 0:
+				archh = "arm"
 			newline_0 = "QEMU=./qemu-system-%s\n" %archh
-			newline_1 = "KERNEL='./vmlinux.%s_3.2.1'\n" %arch
+			if cmp(arch, "mipsel") == 0 or cmp(arch, "mipseb") == 0:
+				newline_1 = "KERNEL='./vmlinux.%s_3.2.1'\n" %arch
+			elif cmp(arch, "armel") == 0:
+				newline_1 = "KERNEL='./zImage.armel'\n"
+			else:
+				newline_1 = ""
 			newline_2 = "IMAGE='./image.raw'\n"
 			newline1 = "AFL=\"./afl-fuzz-full -m none -t 800000+  -i ./inputs -o ./outputs_full -x keywords -QQ -- \"\n"
 			newline2 = "${AFL} "
@@ -26,6 +33,9 @@ def generate_run_full(image_id, arch):
 			file_dst.write(newline1)
 			file_dst.write(newline2)
 			remove_flag = 1 #next line should be removed
+		elif "QEMU_AUDIO_DRV=none" in line:
+			new_line = line.replace("QEMU_AUDIO_DRV=none", "")
+			file_dst.write(new_line)
 		elif "tee" in line:
 			new_line = line.split("|")[0] + "\\\n"
 			file_dst.write(new_line)
