@@ -12,15 +12,10 @@ def generate_run_full(image_id, arch):
 			remove_flag = 0
 		elif "sleep 1s" in line:
 			file_dst.write(line)
-			archh = arch
-			if cmp(arch, "mipseb") == 0:
-				archh = "mips"
-			elif cmp(arch, "armel") == 0:
-				archh = "arm"
-			newline_0 = "QEMU=./qemu-system-%s\n" %archh
-			if cmp(arch, "mipsel") == 0 or cmp(arch, "mipseb") == 0:
+			newline_0 = "QEMU=./qemu-system-%s\n" %arch
+			if cmp(arch, "mipsel") == 0 or cmp(arch, "mips") == 0:
 				newline_1 = "KERNEL='./vmlinux.%s_3.2.1'\n" %arch
-			elif cmp(arch, "armel") == 0:
+			elif cmp(arch, "arm") == 0:
 				newline_1 = "KERNEL='./zImage.armel'\n"
 			else:
 				newline_1 = ""
