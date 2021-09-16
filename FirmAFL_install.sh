@@ -104,7 +104,7 @@ popd
 
 
 # Modify scripts in firmadyne
-echo "[+] Modify makeImage.sh in firmadyne"
 sudo cp firmadyne_modify/makeImage.sh firmadyne/scripts/makeImage.sh
 sudo cp firmadyne_modify/makeNetwork.py firmadyne/scripts/makeNetwork.py
+popd
 # ===========================FirmAFL Installed=================================
