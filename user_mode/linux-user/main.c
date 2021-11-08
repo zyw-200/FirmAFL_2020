@@ -256,28 +256,26 @@ void syscall_addr_check(int addr, int len, int syscall)
 {   
     for(int page = addr & 0xfffff000; page <= ((addr +len) & 0xfffff000); page+=0x1000)
     {
-
-        //printf("check page:%x\n", page);
         uintptr_t *host_addr = g2h(page);
         if(syscall == 3) //read
         {
 
-            syscall_addr_check_flag = 1; // write memory
+            //syscall_addr_check_flag = 1; // write memory
         	*host_addr = 0;
         }
         else if(syscall == 4) //write
         {
-            syscall_addr_check_flag = 0;  // read memory
+            //syscall_addr_check_flag = 0;  // read memory
             uintptr_t a = *host_addr;
             
         }
         else
         {
-            syscall_addr_check_flag = 0;  // read memory
+            //syscall_addr_check_flag = 0;  // read memory
             uintptr_t a = *host_addr; //read memory
         }
     }
-    syscall_addr_check_flag = -1; 
+
 }
 
 
@@ -1293,6 +1291,7 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
     }
     else if(syscall_num == 5)
     {
+        chdir("/server/cgi-bin/"); 
         char *file_name = g2h(a0);
         //printf("open file:%s, flag:%x\n", file_name, a1);
         if(sys_trace_fp)
@@ -1325,6 +1324,7 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
         {
             *file_opti = 0;
         }
+        chdir("/");
     }
     else if(syscall_num == 183)
     {
@@ -3710,16 +3710,20 @@ void cpu_loop(CPUMIPSState *env)
                             syscall_num, env->active_tc.PC, env->active_tc.gpr[4],env->active_tc.gpr[5],env->active_tc.gpr[6]);
                     }
 
-
+                    
                     if((program_id == 129780 || program_id == 129781) && syscall_num == 5)
                     {
                         //printf("current working directory: %s\n", getcwd(NULL, NULL));
                         chdir("/server/cgi-bin/"); 
                     }
+                    
                     else if(syscall_num == 3 || syscall_num == 4)
                     {
                         //very important for 129781
+                        syscall_addr_check_flag = 1;
+                        printf("syscall_addr_check:%d\n", syscall_addr_check_flag);
                         syscall_addr_check(env->active_tc.gpr[5], env->active_tc.gpr[6], syscall_num);
+                        syscall_addr_check_flag = -1; 
                     }
                     /*
                     else if(syscall_num == 170)
@@ -3742,11 +3746,12 @@ void cpu_loop(CPUMIPSState *env)
                     
 
 #ifdef MEM_MAPPING    
-   
+                    
                     if((program_id == 129780 || program_id == 129781) && syscall_num == 5)
                     {
                         chdir("/");
                     }
+                    
                     //optimization
                     if(file_opti == 1)
                     {
@@ -6829,8 +6834,8 @@ int main(int argc, char **argv, char **envp)
 
 #endif
 
-    //startTrace(0x0, 0x7fffffff);
-    startTrace(target_start, target_end);
+    startTrace(0x0, 0x7fffffff);
+    //startTrace(target_start, target_end);
     afl_entry_point = start_fork_pc;
     printf("afl_entry_point:%x, start:%x,end:%x\n", afl_entry_point, afl_start_code ,afl_end_code);
 #endif //MEM_MAPPING
