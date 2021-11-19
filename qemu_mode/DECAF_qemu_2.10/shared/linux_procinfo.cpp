@@ -1792,10 +1792,12 @@ int load_proc_info(CPUState * env, gva_t threadinfo, ProcInfo &pi)
 
   // find init_task_addr
   tulInitTaskAddr = findTaskStructFromThreadInfo(env, threadinfo, &pi, 0);
-//zyw
+  /*
 #ifdef TARGET_ARM
-  tulInitTaskAddr = 3227507384;
+  tulInitTaskAddr = 3250624000; //agl
+  //tulInitTaskAddr = 3227507384; 4.1
 #endif
+  */
 
   // tulInitTaskAddr = 2154330880;
   if (INV_ADDR == tulInitTaskAddr)

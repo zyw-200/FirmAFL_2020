@@ -219,6 +219,10 @@ int write_addr(uintptr_t ori_addr, uintptr_t addr);
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
 
+
+target_ulong code_start  = 0;
+target_ulong code_end  = 0;
+
 FILE * previous_trace_fp = NULL;
 FILE * sys_trace_fp = NULL;
 
@@ -431,7 +435,10 @@ void prepare_feed_input(CPUState * cpu)
 #endif
         int cmd_addr = 0;
         DECAF_read_ptr(cpu, argv + 4, &cmd_addr);
+#ifdef TARGET_MIPS
         DECAF_read_ptr(cpu, argv + 8, &feed_addr);
+#endif
+        feed_addr = cmd_addr;
         char cmd_str[256];
         DECAF_read_mem(cpu, cmd_addr, 256, cmd_str);
         DECAF_printf("cmd is %s\n", cmd_str);
@@ -582,7 +589,6 @@ int feed_input(CPUState * cpu)
 
         int ret = DECAF_write_mem(cpu, content_addr, get_len, input_buf);
         DECAF_write_mem(cpu, content_addr + get_len, 1, "\0"); //important
-
 
         /*
         int tmp_content_addr = 0;
@@ -966,13 +972,21 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
     //DECAF_printf("parent proc:%s\n", par_proc_name);
 #if defined(FUZZ) || defined(MEM_MAPPING)
     if(strcmp(procname,program_analysis) == 0 &&strstr(procname,"S") == NULL&& strstr(procname,".sh") == NULL && strstr(par_proc_name, "procd") == NULL)
-    {
-        //DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cur pgd:%x\n",procname, index, pid, par_pid, params->cp.cr3);
-
-        
-        //FILE *fp = fopen("program_start", "w+");
-        //fclose(fp);
+    { 
+#ifdef TARGET_ARM
+        DECAF_printf("\nProcname:%s/%d,pid:%d:%d, cur pgd:%x\n",procname, index, pid, par_pid, params->cp.cr3);
+        char modname[512];
+        target_ulong base;
+        DECAF_printf("print_mapping for %x\n", params->cp.cr3);
+        FILE * fp2 = fopen("mapping", "w");
+        print_mapping(modname, params->cp.cr3, &base, fp2);// obtain mapping
+        fclose(fp2);
+        config_pc = code_start + 0x74c4;
+        printf("config_pc:%x,%x\n", code_start, config_pc);
         insert_pgd(params->cp.cr3);
+#elif defined(TARGET_MIPS)
+        insert_pgd(params->cp.cr3 & 0xfffff000);
+#endif
 
 #ifdef SHOW_SYSCALL_TRACE
         int file_exist = access("syscall_trace_full_before", F_OK);
@@ -1005,6 +1019,7 @@ static void callbacktests_removeproc_callback(VMI_Callback_Params* params)
     {
         return;
     }
+    //DECAF_printf("\nProcname end:%s/%d,pid:%d, cur pgd:%x\n",procname, index, pid, params->rp.cr3);
 #if defined(FUZZ) || defined(MEM_MAPPING)
     if(strcmp(procname,program_analysis) == 0)
     {
@@ -2293,8 +2308,7 @@ int specify_fork_pc(CPUState *cpu)
 }
 //#endif 
 
-target_ulong code_start  = 0;
-target_ulong code_end  = 0;
+
 
 int start_fork(CPUState *cpu, target_ulong pc)
 {
@@ -2581,8 +2595,11 @@ void handle_accept_after(CPUState *cpu, target_ulong pc)
 target_ulong ori_a1;
 target_ulong ori_a3;
 extern target_ulong kernel_fatal_signal;
-//#define SHOW_SYSCALL
 
+//#define SHOW_SYSCALL
+#ifdef TARGET_ARM
+int load_pc_flag = 0;
+#endif
 
 /* main execution loop */
 int cpu_exec(CPUState *cpu)
@@ -2915,7 +2932,7 @@ skip_to_pos:
                         target_ulong addr_write = env->tlb_table[0][ind].addr_write;
                         uintptr_t addend = env->tlb_table[0][ind].addend;
 #endif
-                        DECAF_printf("pc is:%x, into normal execution:%x, %x,%x,%x, %lx\n",pc, handle_addr, addr_code, addr_read, addr_write,addend);        
+                        //DECAF_printf("pc is:%x, into normal execution:%x, %x,%x,%x, %lx\n",pc, handle_addr, addr_code, addr_read, addr_write,addend);        
                         if(!find_tlb_backup(ind))
                         {
                             record_tlb(ind, addr_code, addr_read, addr_write, addend);
@@ -3271,15 +3288,6 @@ skip_to_pos:
             if(afl_user_fork && into_syscall == 4005 && in_httpd)
             {
 
-            }
-            if(pgd_exist())
-            {
-                target_ulong pgd =DECAF_getPGD(cpu);
-                if(pc<0x10000000 && find_pgd(pgd))
-                {
-                    printf("pc:%x\n", pc);
-
-                }
             }
             */
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);

@@ -81,7 +81,7 @@ static void convert_endian_4b(uint32_t *data);
 extern int httpd_pgd;
 extern int fork_times;
 #endif
-
+extern int load_pc_flag;
 static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {
 	CPUArchState * env_ptr = (CPUArchState *)env->env_ptr;
 	int mmu_idx, index;
@@ -99,6 +99,7 @@ static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {
 		}
 	}
 	#endif
+	/*
 	if (__builtin_expect(
 			env_ptr->tlb_table[mmu_idx][index].addr_read
 					!= (addr & TARGET_PAGE_MASK), 0)) {
@@ -112,6 +113,13 @@ static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {
 			return phys_addr;
 		}
 	}
+	*/
+
+	phys_addr = cpu_get_phys_page_debug(env, addr & TARGET_PAGE_MASK);
+	if (phys_addr == -1)
+		return -1;
+	phys_addr += addr & (TARGET_PAGE_SIZE - 1);
+	return phys_addr;
 
 	void *p = (void *) (addr+ env_ptr->tlb_table[mmu_idx][index].addend);
 
@@ -147,16 +155,18 @@ gpa_t DECAF_get_phys_addr(CPUState* env, gva_t addr)
 
 	phys_addr = _DECAF_get_phys_addr(env, addr);
 
-		//zyw
+	/*
+	//zyw
 #ifdef TARGET_ARM
-	if(phys_addr <0x10000000 )
+	if(phys_addr <0x30000000 )
 	//if(phys_addr <0x10000000 && httpd_pgd)
 	{
+		printf("??????????????phys_addr:%lx,%lx\n",addr, phys_addr);
 		phys_addr = phys_addr + 0x40000000;
-		//printf("phys_addr:%lx,%lx\n",page, phys_addr);
+		
 	}
 #endif	
-
+	*/
 	// restore hflags
 #ifdef TARGET_MIPS
 	env_ptr->hflags = ori_hflags;

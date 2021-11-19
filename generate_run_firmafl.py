@@ -12,8 +12,13 @@ def generate_run_firmafl(image_id, arch):
 			archh = arch
 			if cmp(arch, "mipseb") == 0:
 				archh = "mips"
+			elif cmp(arch, "armel") == 0:
+				archh = "arm"
 			newline_0 = "QEMU=./qemu-system-%s\n" %archh
-			newline_1 = "KERNEL='./vmlinux.%s_3.2.1'\n" %arch
+			if cmp(archh, "mipsel") == 0 or cmp(archh, "mips") == 0:
+				newline_1 = "KERNEL='./vmlinux.%s_3.2.1'\n" %archh
+			elif cmp(archh, "arm") == 0:
+				newline_1 = "KERNEL='./zImage.armel'\n"
 			newline_2 = "IMAGE='./image.raw'\n"
 			newline_3 = "MEM_FILE='./mem_file'\n"
 			file_dst.write(newline_0)

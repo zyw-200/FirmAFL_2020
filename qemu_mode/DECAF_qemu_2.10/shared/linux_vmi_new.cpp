@@ -242,8 +242,7 @@ static void traverse_task_struct_add(CPUState *env)
 
 
         BREAK_IF(DECAF_read_ptr(env, next_task + OFFSET_PROFILE.ts_mm, &mm) < 0);
-
-	//DECAF_read_ptr(env, next_task + OFFSET_PROFILE.ts_mm, &mm);
+	
         if (mm != 0)
         {
             BREAK_IF(DECAF_read_ptr(env, mm + OFFSET_PROFILE.mm_pgd,
@@ -260,10 +259,8 @@ static void traverse_task_struct_add(CPUState *env)
             kernel_count++;
             continue;
         }
-
         if (!VMI_find_process_by_pgd(proc_cr3))
         {
-
             // get task_pid
             BREAK_IF(DECAF_read_ptr(env, next_task + OFFSET_PROFILE.ts_tgid,
                                     &task_pid) < 0);
