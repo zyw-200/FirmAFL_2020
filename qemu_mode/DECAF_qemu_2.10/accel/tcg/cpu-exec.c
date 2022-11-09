@@ -508,6 +508,18 @@ int check_http_header(char * input) // if all are readable charater before =
         }
 
     }
+    else if(program_id == 161161)
+    {
+        if(strncmp(input, "POST /apply.cgi HTTP/1.1\r\n", 26) == 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+
+    }
     else if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
     {
         return 1;

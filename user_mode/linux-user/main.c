@@ -513,6 +513,18 @@ int check_http_header(char * input) // if all are readable charater before =
         }
 
     }
+    else if(program_id == 161161)
+    {
+        if(strncmp(input, "POST /apply.cgi HTTP/1.1\r\n", 26) == 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+
+    }
     else if(strncmp(input, "POST", 4) == 0 || strncmp(input, "GET", 3) == 0)
     {
         return 1;
@@ -1106,7 +1118,7 @@ void remove_tmp_files()
 int count_142 = 0;
 int count_20 = 0;
 
-//int last_syscall = 0;
+int last_syscall = 0; //used for 161161 firmware
 int count_3 = 0;
 int monitor_fd = 0;
 
@@ -1190,7 +1202,16 @@ void exit_func(int syscall_num, int program_id)
         }
         else if(syscall_num == 142)
         {
-            if(state == 2 && ( program_id == 12979 || program_id == 13112 || program_id == 18627))
+            //add for 161161 firmware
+            if(program_id == 161161)
+            {
+                if(last_syscall == 142)
+                {
+                    last_syscall = 0;
+                    normal_exit(syscall_num); 
+                }
+            }
+            else if(state == 2 && ( program_id == 12979 || program_id == 13112 || program_id == 18627))
             {
                 state++;
             }   
@@ -1230,7 +1251,31 @@ void exit_func(int syscall_num, int program_id)
             {
                 normal_exit(syscall_num);
             }
+            ////add for 161161 firmware
+            if(program_id == 161161)
+            {
+                 normal_exit(syscall_num);
+            }
         }
+        //add for 161161 firmware
+        else if(syscall_num == 3)
+        {
+            if(program_id == 161161)
+            {
+                count_3++;
+                if(count_3 == 3)
+                {
+                    count_3 = 0;
+                    last_syscall = 0;
+                    normal_exit(syscall_num);
+                }
+            }
+        }
+        if(syscall_num != 3)
+        {
+            count_3 = 0;
+        }
+        //end
         
 #endif
 }
@@ -1248,6 +1293,7 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
     target_ulong a1 = env->regs[1];
     target_ulong a2 = env->regs[2];
 #endif
+
     if(syscall_num == 166) //nanosleep 10853
     {
         *local_or_not = 2;
@@ -1265,6 +1311,11 @@ target_ulong determine_local_or_not(int syscall_num, CPUArchState *env, int *fil
     }
     else if(syscall_num == 4 && a0 == accept_fd) //write
     {
+        //add for 161161 firmware
+        if(program_id == 161161)
+        {
+            normal_exit(syscall_num);
+        }
         *local_or_not = 2;
         return a2; //len
     }
@@ -3844,7 +3895,7 @@ void cpu_loop(CPUMIPSState *env)
                 }
 #endif
             }
-            //last_syscall = syscall_num;
+            last_syscall = syscall_num;
 done_syscall:
 # else
             ret = do_syscall(env, env->active_tc.gpr[2],

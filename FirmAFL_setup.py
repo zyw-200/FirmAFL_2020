@@ -24,6 +24,8 @@ keywords_src = "FirmAFL_config/%s/keywords" %(firm_id)
 afl_src= "FirmAFL_config/afl-fuzz"
 firmadyne_src = "firmadyne/firmadyne.config"
 image_src = "firmadyne/scratch/%s/image.raw" %firm_id
+if "161161" or "161160" in firm_id:
+	image_src = "firmadyne/scratch/16116/image.raw" 
 if "mips" in firm_arch:
 	kernel_src ="firmadyne_modify/vmlinux.%s_3.2.1" %firm_arch
 else:
