@@ -439,6 +439,16 @@ static void afl_setup(void) {
 
 /* Fork server logic, invoked once we hit _start. */
 
+//#define honggfuzz
+#ifdef honggfuzz
+extern int seed_index;
+extern int loop_index;
+FILE * time_fp = NULL;
+struct timeval honggfuzz_loop_start, honggfuzz_loop_end;
+extern void notify_end(); 
+#endif
+
+
 static void afl_forkserver(CPUState *cpu) {
 
   static unsigned char tmp[4];
@@ -520,6 +530,39 @@ static void afl_forkserver(CPUState *cpu) {
       }
     }
     if (write(FORKSRV_FD + 1, &new_status, 4) != 4) exit(7);
+
+#ifdef honggfuzz
+    seed_index++;
+    if(seed_index == 1188)
+    {
+      seed_index = 0;
+      if(loop_index > 0 && loop_index < 6)
+      {
+        gettimeofday(&honggfuzz_loop_end, NULL);
+        double honggfuzz_loop_time = (double)honggfuzz_loop_end.tv_sec - honggfuzz_loop_start.tv_sec + (honggfuzz_loop_end.tv_usec - honggfuzz_loop_start.tv_usec)/1000000.0;
+        double ave_time = honggfuzz_loop_time/1188;
+        printf("ave time:%f\n", ave_time);
+        if(loop_index == 1)
+        {
+          time_fp = fopen("/firmafl_time", "w+");
+        }
+        else
+        {
+          time_fp = fopen("/firmafl_time", "a+");
+        }
+        fprintf(time_fp, "%f\n", ave_time);
+        fclose(time_fp);
+        if(loop_index == 5)
+        {
+          notify_end();
+          exit(0);
+        }
+      }
+      loop_index++;
+      gettimeofday(&honggfuzz_loop_start, NULL);
+    }
+#endif
+
 
   }
 

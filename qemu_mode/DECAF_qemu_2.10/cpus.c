@@ -2241,13 +2241,18 @@ gotPipeNotification(void *ctx)
 }
 #endif
 
-
-
+//#define honggfuzz
+#ifdef honggfuzz
+extern void read_seed_file();
+#endif
 
 void qemu_init_vcpu(CPUState *cpu)
 {
 #if defined(FUZZ) || defined(MEM_MAPPING) 
     FirmAFL_config();
+#endif
+#ifdef honggfuzz
+    read_seed_file();
 #endif
 #ifdef MEM_MAPPING
     int res = open_read_pipe();

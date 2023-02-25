@@ -307,6 +307,28 @@ static void write_ptr(CPUState* cpu, int vaddr, int pptr_addr)
 }
 char * aflFile;
 
+
+//#define honggfuzz
+#ifdef honggfuzz
+int seed_index = 0;
+int loop_index = 0;
+char *seed_file[1188];
+
+void read_seed_file()
+{
+    DIR * d  = opendir("honggfuzz_seeds");
+    struct dirent *dp = NULL;
+    int index = 0;
+    while((dp = readdir(d))!=NULL)
+    {
+        if((!strncmp(dp->d_name, ".", 1)) || (!strncmp(dp->d_name, "..", 2)))
+            continue;
+        seed_file[index] = malloc(sizeof(char)*100);
+        sprintf(seed_file[index++], "%s/%s", "honggfuzz_seeds", dp->d_name);
+    }
+}
+#endif
+
 target_ulong getWork(char * ptr, target_ulong sz)
 {
     target_ulong retsz;
@@ -314,12 +336,25 @@ target_ulong getWork(char * ptr, target_ulong sz)
     unsigned char ch;
     //printf("pid %d: getWork %lx %lx\n", getpid(), ptr, sz);fflush(stdout);
     //printf("filename:%s\n",aflFile);
+#ifdef honggfuzz
+    if(loop_index == 0)
+    {
+        fp= fopen("inputs/seed_get", "rb");
+        //printf("seed:%d %s\n", seed_index, "/inputs/seed_get");
+    }
+    else
+    {
+        fp = fopen(seed_file[seed_index], "rb");
+        //printf("seed %d:%s\n",seed_index, seed_file[seed_index]);
+    }
+#else
     fp = fopen(aflFile, "rb");
     if(!fp) {
         perror(aflFile);
         printf("aflfile open failed:%s\n", aflFile);
         return errno;
     }
+#endif
     retsz = 0;
     while(retsz < sz) {
         if(fread(&ch, 1, 1, fp) == 0)
@@ -637,12 +672,14 @@ int feed_input(CPUState * cpu)
         */
         total_len = getWork(recv_buf, 4096);
         
-        
+#ifndef honggfuzz 
         if(check_http_header(recv_buf) == 0)
         {
             //printf("recv_buf:%s\n", recv_buf);
+            sleep(100);
             return 2;
         }
+#endif
         
         DECAF_printf("");
     }
@@ -981,7 +1018,8 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
         FILE * fp2 = fopen("mapping", "w");
         print_mapping(modname, params->cp.cr3, &base, fp2);// obtain mapping
         fclose(fp2);
-        config_pc = code_start + 0x74c4;
+        //config_pc = code_start + 0x74c4;
+        config_pc = code_start +  0x38e0; //0x1fb9; 
         printf("config_pc:%x,%x\n", code_start, config_pc);
         insert_pgd(params->cp.cr3);
 #elif defined(TARGET_MIPS)
@@ -989,11 +1027,13 @@ static void callbacktests_loadmainmodule_callback(VMI_Callback_Params* params)
 #endif
 
 #ifdef SHOW_SYSCALL_TRACE
+        /*
         int file_exist = access("syscall_trace_full_before", F_OK);
         if(file_exist != 0)
         {
             previous_trace_fp = fopen("syscall_trace_full_before", "a+");    
         }
+        */
 #endif
 
 
@@ -3247,7 +3287,7 @@ skip_to_pos:
             }
             */
 
-#ifdef SHOW_SYSCALL             
+//#ifdef SHOW_SYSCALL             
             if(pgd_exist())
             {
                 target_ulong pgd =DECAF_getPGD(cpu);
@@ -3280,10 +3320,15 @@ skip_to_pos:
                       
                     }
                 }
+                #elif defined(TARGET_ARM)
+                if(find_pgd(pgd) && pc < 0x10000000)
+                {
+                    //printf("pc:%x\n", pc);
+                }
                 #endif
                 
             }
-#endif  
+//#endif  
             /*
             if(afl_user_fork && into_syscall == 4005 && in_httpd)
             {
@@ -3698,6 +3743,11 @@ int read_state(CPUArchState * env, MISSING_PAGE *page, target_ulong *addr, int *
                 }
                 read_type = -1;
                 return 2;
+            }
+            case 3:
+            {
+                printf("qemu will end now");
+                exit(0);
             }
             default:
             {
@@ -4189,7 +4239,6 @@ void handlePiperead(void *ctx)
         reset_current_state(cpu); // add
         restart();
     }
-
 }
 
 

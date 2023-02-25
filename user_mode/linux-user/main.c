@@ -362,6 +362,26 @@ void get_input(CPUState * cpu){}
 
 #ifdef FEED_INPUT
 
+//#define honggfuzz
+#ifdef honggfuzz
+int seed_index = 0;
+int loop_index = 0;
+char *seed_file[1188];
+
+void read_seed_file(char * dirname, char ** filename)
+{
+    DIR * d  = opendir(dirname);
+    struct dirent *dp = NULL;
+    int index = 0;
+    while((dp = readdir(d))!=NULL)
+    {
+        if((!strncmp(dp->d_name, ".", 1)) || (!strncmp(dp->d_name, "..", 2)))
+            continue;
+        filename[index] = malloc(sizeof(char)*100);
+        sprintf(filename[index++], "/%s/%s", dirname, dp->d_name);
+    }
+}
+#endif
 
 target_ulong getWork(char * ptr, target_ulong sz)
 {
@@ -370,12 +390,25 @@ target_ulong getWork(char * ptr, target_ulong sz)
     unsigned char ch;
     //printf("pid %d: getWork %lx %lx\n", getpid(), ptr, sz);fflush(stdout);
     //printf("filename:%s\n",aflFile);
+#ifdef honggfuzz
+    if(loop_index == 0)
+    {
+        fp= fopen("/inputs/seed_get", "rb");
+        //printf("seed:%d %s\n", seed_index, "/inputs/seed_get");
+    }
+    else
+    {
+        fp = fopen(seed_file[seed_index], "rb");
+        //printf("seed %d:%s\n",seed_index, seed_file[seed_index]);
+    }
+#else
     fp = fopen(aflFile, "rb");
     if(!fp) {
         perror(aflFile);
         printf("aflfile open failed\n");
         return errno;
     }
+#endif
     retsz = 0;
     while(retsz < sz) {
         if(fread(&ch, 1, 1, fp) == 0)
@@ -640,11 +673,13 @@ void get_input(CPUState * cpu)
         return;
         */
         total_len = getWork(recv_buf, 4096);
+#ifndef honggfuzz
         if(check_http_header(recv_buf) == 0)
         {
             //printf("recv_buf:%s\n", recv_buf);
             normal_exit(0);
         }
+#endif
         
     }
     else if (strcmp(feed_type, "FEED_CMD") == 0)
@@ -931,14 +966,14 @@ void exception_exit(int syscall_num)
 {
     exception_count++;
     printf("exception count:%d\n", exception_count);
-    gettimeofday(&restore_page_start, NULL);
+    //gettimeofday(&restore_page_start, NULL);
 #ifdef STORE_PAGE_FUNC
     printf("exception restore_page start\n");
     restore_page_exception();  //zyw
     printf("exception restore_page end\n");
 #endif
-    gettimeofday(&restore_page_end, NULL);
-    restore_page_total += (double)restore_page_end.tv_sec - restore_page_start.tv_sec + (restore_page_end.tv_usec - restore_page_start.tv_usec)/1000000.0;
+    //gettimeofday(&restore_page_end, NULL);
+    //restore_page_total += (double)restore_page_end.tv_sec - restore_page_start.tv_sec + (restore_page_end.tv_usec - restore_page_start.tv_usec)/1000000.0;
     /*
     if(program_id == 129780 || program_id == 129781)
     {
@@ -980,12 +1015,12 @@ void exception_exit(int syscall_num)
 
 void normal_exit(int syscall_num)
 {
-    gettimeofday(&restore_page_start, NULL);
+    //gettimeofday(&restore_page_start, NULL);
 #ifdef STORE_PAGE_FUNC
     restore_page();  //zyw
 #endif
-    gettimeofday(&restore_page_end, NULL);
-    restore_page_total += (double)restore_page_end.tv_sec - restore_page_start.tv_sec + (restore_page_end.tv_usec - restore_page_start.tv_usec)/1000000.0;
+    //gettimeofday(&restore_page_end, NULL);
+    //restore_page_total += (double)restore_page_end.tv_sec - restore_page_start.tv_sec + (restore_page_end.tv_usec - restore_page_start.tv_usec)/1000000.0;
     if(program_id == 129780 || program_id == 129781)
     {
         remove_tmp_files();
@@ -1013,12 +1048,12 @@ void normal_exit(int syscall_num)
 
 void bug_exit(target_ulong addr)
 {
-    gettimeofday(&restore_page_start, NULL);
+    //gettimeofday(&restore_page_start, NULL);
 #ifdef STORE_PAGE_FUNC
     restore_page();  //zyw
 #endif
-    gettimeofday(&restore_page_end, NULL);
-    restore_page_total += (double)restore_page_end.tv_sec - restore_page_start.tv_sec + (restore_page_end.tv_usec - restore_page_start.tv_usec)/1000000.0;
+    //gettimeofday(&restore_page_end, NULL);
+    //restore_page_total += (double)restore_page_end.tv_sec - restore_page_start.tv_sec + (restore_page_end.tv_usec - restore_page_start.tv_usec)/1000000.0;
 
     if(program_id == 129780 || program_id == 129781)
     {
@@ -3761,7 +3796,7 @@ void cpu_loop(CPUMIPSState *env)
                     if(print_debug)
                     {
                         printf("time:%f, sys num ret:%x\n",handle_syscall_end.tv_sec + handle_syscall_end.tv_usec/1000000.0, ret);
-                    handle_syscall_total += (double)handle_syscall_end.tv_sec - handle_syscall_start.tv_sec + (handle_syscall_end.tv_usec - handle_syscall_start.tv_usec)/1000000.0;
+                        handle_syscall_total += (double)handle_syscall_end.tv_sec - handle_syscall_start.tv_sec + (handle_syscall_end.tv_usec - handle_syscall_start.tv_usec)/1000000.0;
                     }
                     
                 }
@@ -6851,6 +6886,9 @@ int main(int argc, char **argv, char **envp)
         printf("CP0_UserLocal:%x\n", CP0_UserLocal);
     }
 #endif
+#ifdef honggfuzz
+    read_seed_file("/honggfuzz_seeds", seed_file);
+#endif
     cpu_loop(env);
     /* never exits */
     return 0;
@@ -7023,7 +7061,7 @@ static void handler(int sig_num, siginfo_t *si, void *ptr)
         int phys_page;
 
         int re;
-        gettimeofday(&handle_addr_start, NULL);
+        //gettimeofday(&handle_addr_start, NULL);
         
         cross_process_mutex_init(); //zyw
         pthread_mutex_lock(p_mutex_shared);
@@ -7171,7 +7209,7 @@ static void handler(int sig_num, siginfo_t *si, void *ptr)
         int phys_page;
 
         int re;
-        gettimeofday(&handle_addr_start, NULL);
+        //gettimeofday(&handle_addr_start, NULL);
         
         cross_process_mutex_init(); //zyw
         pthread_mutex_lock(p_mutex_shared);
@@ -7212,14 +7250,14 @@ static void handler(int sig_num, siginfo_t *si, void *ptr)
 
         cross_shamem_disconn(); //ZYW 
 
-        gettimeofday(&handle_addr_end, NULL);
+        //gettimeofday(&handle_addr_end, NULL);
         double handle_addr_time  =  (double)handle_addr_end.tv_sec - handle_addr_start.tv_sec + (handle_addr_end.tv_usec - handle_addr_start.tv_usec)/1000000.0;
         handle_addr_total += handle_addr_time;
 
         if(page.prot == 1)
         {
             //new
-            gettimeofday(&store_page_start, NULL);
+            //gettimeofday(&store_page_start, NULL);
 
     #ifdef STORE_PAGE_FUNC
             store_page(h2g(si->si_addr) & 0xfffff000, 1);
@@ -7231,7 +7269,7 @@ static void handler(int sig_num, siginfo_t *si, void *ptr)
     #endif       
     #endif
             add_store_write_page(h2g(si->si_addr) & 0xfffff000);
-            gettimeofday(&store_page_end, NULL);
+            //gettimeofday(&store_page_end, NULL);
             store_page_total += (double)store_page_end.tv_sec - store_page_start.tv_sec + (store_page_end.tv_usec - store_page_start.tv_usec)/1000000.0;
         }
     #ifdef STORE_PAGE_FUNC
@@ -7404,6 +7442,17 @@ void open_read_pipe()
       
 }  
 
+
+void notify_end()
+{
+    int res = 0;
+    int type = 3;
+    if(pipe_write_fd != -1)  
+    { 
+        write(pipe_write_fd, &type, sizeof(int));
+    }
+
+}
 
 
 int write_state(CPUArchState *env, target_ulong address, int prot)  
@@ -7604,7 +7653,7 @@ void handle_store(CPUArchState *env, target_ulong cur_guest_pc, target_ulong pag
         //if(!map_res)
         //{
             //printf("cur pc:%x, %x, %x\n", cur_guest_pc, env->active_tc.PC, page_addr);
-            gettimeofday(&handle_addr_start, NULL);
+            //gettimeofday(&handle_addr_start, NULL);
             MISSING_PAGE page;
             page.prot = 1;
             page.addr = page_addr;
@@ -7639,13 +7688,13 @@ void handle_store(CPUArchState *env, target_ulong cur_guest_pc, target_ulong pag
             pthread_mutex_unlock(p_mutex_shared);
             cross_shamem_disconn(); //zyw 
 
-            gettimeofday(&handle_addr_end, NULL);
+            //gettimeofday(&handle_addr_end, NULL);
             double handle_addr_time  =  (double)handle_addr_end.tv_sec - handle_addr_start.tv_sec + (handle_addr_end.tv_usec - handle_addr_start.tv_usec)/1000000.0;
             //printf("write map time:%f, addr:%lx,%lx\n", handle_addr_time, page_addr, phys_addr);
             handle_addr_total += handle_addr_time;
         //}
 //zyw part of lightweight snapshot 
-        gettimeofday(&store_page_start, NULL);
+        //gettimeofday(&store_page_start, NULL);
 #ifdef STORE_PAGE_FUNC
         store_page(page_addr,1);
         int phys_page;
@@ -7660,8 +7709,8 @@ void handle_store(CPUArchState *env, target_ulong cur_guest_pc, target_ulong pag
         add_physical_page(phys_page);
 #endif
 #endif
-        gettimeofday(&store_page_end, NULL);
-        store_page_total += (double)store_page_end.tv_sec - store_page_start.tv_sec + (store_page_end.tv_usec - store_page_start.tv_usec)/1000000.0;
+        //gettimeofday(&store_page_end, NULL);
+        //store_page_total += (double)store_page_end.tv_sec - store_page_start.tv_sec + (store_page_end.tv_usec - store_page_start.tv_usec)/1000000.0;
     }
 }
 
@@ -7686,7 +7735,7 @@ void handle_store(CPUArchState *env, target_ulong pc, target_ulong page_addr)
         //int map_res = if_vaddr_write_mapped(page_addr);
         //if(!map_res)
         //{
-            gettimeofday(&handle_addr_start, NULL);
+           //gettimeofday(&handle_addr_start, NULL);
             MISSING_PAGE page;
             int phys_page;;
             page.prot = 1;
@@ -7718,13 +7767,13 @@ void handle_store(CPUArchState *env, target_ulong pc, target_ulong page_addr)
             pthread_mutex_unlock(p_mutex_shared);
             cross_shamem_disconn(); //zyw 
 
-            gettimeofday(&handle_addr_end, NULL);
-            double handle_addr_time  =  (double)handle_addr_end.tv_sec - handle_addr_start.tv_sec + (handle_addr_end.tv_usec - handle_addr_start.tv_usec)/1000000.0;
+            //gettimeofday(&handle_addr_end, NULL);
+            //double handle_addr_time  =  (double)handle_addr_end.tv_sec - handle_addr_start.tv_sec + (handle_addr_end.tv_usec - handle_addr_start.tv_usec)/1000000.0;
             //printf("handle store write map time:%f, addr:%lx,%lx\n", handle_addr_time, page_addr, file_offset);
-            handle_addr_total += handle_addr_time;
+            //handle_addr_total += handle_addr_time;
         //}
 //zyw part of lightweight snapshot 
-        gettimeofday(&store_page_start, NULL);
+        //gettimeofday(&store_page_start, NULL);
 #ifdef STORE_PAGE_FUNC
         store_page(page_addr,1);
         int phys_page;
@@ -7739,8 +7788,8 @@ void handle_store(CPUArchState *env, target_ulong pc, target_ulong page_addr)
         add_physical_page(phys_page);
 #endif
 #endif
-        gettimeofday(&store_page_end, NULL);
-        store_page_total += (double)store_page_end.tv_sec - store_page_start.tv_sec + (store_page_end.tv_usec - store_page_start.tv_usec)/1000000.0;
+        //ettimeofday(&store_page_end, NULL);
+        //store_page_total += (double)store_page_end.tv_sec - store_page_start.tv_sec + (store_page_end.tv_usec - store_page_start.tv_usec)/1000000.0;
     }
 }
 #endif
